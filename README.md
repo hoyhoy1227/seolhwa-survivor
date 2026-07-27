@@ -1,30 +1,42 @@
-# 설화 서바이버
+# 설화: 밤의 사냥꾼
 
-한국 설화 속 인물을 선택해 몰려오는 적과 적응형 보스를 상대하는 Phaser 3 기반 브라우저 게임입니다.
+한국 설화 속 수호자와 함께 몰려오는 요괴를 상대하는 2D 픽셀 아트 생존 액션 게임입니다. 브라우저에서 설치 없이 바로 플레이할 수 있습니다.
 
 ## 바로 플레이
 
-**[지금 게임 플레이하기](https://hoyhoy1227.github.io/seolhwa-survivor/)**
+**[설화: 밤의 사냥꾼 실행하기](https://hoyhoy1227.github.io/seolhwa-survivor/)**
+
+## 주요 특징
+
+- 도깨비, 구미호, 해치, 산신, 처용, 바리데기 중 캐릭터 선택
+- 가까운 적을 향한 자동 공격과 경험치 기반 레벨업
+- 일반 성장 능력과 보물상자 전용 희귀 능력
+- 낮에서 황혼을 거쳐 밤으로 바뀌는 전장
+- 밤에는 캐릭터가 든 호롱불 주변만 보이는 시야 시스템
+- 절차적으로 생성되는 배경음악과 전투 효과음
+- 시작, 캐릭터 선택, 일시정지, 재시작, 게임 오버 메뉴
+- 데스크톱과 모바일 화면에 대응하는 반응형 UI
 
 ## 조작법
 
-- 캐릭터 선택: 마우스 클릭
 - 이동: 방향키 또는 `WASD`
+- 마우스/터치: 화면을 누른 방향으로 이동
 - 공격: 가장 가까운 적을 향해 자동 공격
+- 일시정지: 화면 오른쪽 아래 버튼 또는 `Esc`
 
 ## 로컬 실행
 
-정적 웹 서버로 저장소 루트를 연 뒤 브라우저에서 접속합니다.
+저장소 루트에서 정적 웹 서버를 실행합니다.
 
 ```powershell
 python -m http.server 8000
 ```
 
-그 다음 <http://localhost:8000>을 엽니다. `index.html` 파일을 직접 열면 브라우저 보안 정책 때문에 일부 기능이 다르게 동작할 수 있습니다.
+그다음 <http://localhost:8000>을 엽니다. 브라우저 보안 정책 때문에 `index.html` 파일을 직접 여는 것보다 로컬 서버 사용을 권장합니다.
 
 ## GitHub Pages 배포
 
-`main` 브랜치에 푸시하면 [배포 워크플로](./.github/workflows/deploy-pages.yml)가 자동으로 실행됩니다. 저장소의 **Settings → Pages → Build and deployment → Source**가 **GitHub Actions**로 설정되어 있어야 합니다.
+`main` 브랜치에 푸시하면 [GitHub Actions 배포 워크플로](./.github/workflows/deploy-pages.yml)가 GitHub Pages에 자동으로 배포합니다.
 
 ## 프로젝트 구조
 
@@ -33,6 +45,8 @@ python -m http.server 8000
 ├─ index.html
 ├─ src/
 │  └─ game.js
+├─ assets/
+│  └─ sprites/
 └─ .github/
    └─ workflows/
       └─ deploy-pages.yml
