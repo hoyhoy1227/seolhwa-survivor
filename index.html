@@ -249,7 +249,7 @@
     #xp-fill { background: linear-gradient(90deg, #3e74b9, #73b9e8); }
 
     .time-card {
-      min-width: 172px;
+      min-width: 190px;
       padding: 9px 11px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(5,6,12,.72);
@@ -259,6 +259,129 @@
     #phase { color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: .18em; }
     #timer { margin-top: 3px; font-family: ui-monospace, monospace; font-size: 22px; font-weight: 900; }
     #run-stats { color: var(--muted); font-size: 10px; }
+
+    .sun-clock {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 7px;
+      text-align: left;
+    }
+
+    .sun-clock-dial {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border: 2px solid rgba(240,185,79,.65);
+      border-radius: 50%;
+      background:
+        linear-gradient(180deg, rgba(94,167,205,.35) 0 49%, rgba(36,28,52,.72) 51% 100%);
+      box-shadow: inset 0 0 14px rgba(0,0,0,.48), 0 0 12px rgba(240,185,79,.08);
+    }
+
+    .sun-clock-dial::before,
+    .sun-clock-dial::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,.22);
+    }
+
+    .sun-clock-dial::before { top: 21px; left: 3px; right: 3px; height: 1px; }
+    .sun-clock-dial::after { top: 3px; bottom: 3px; left: 21px; width: 1px; }
+
+    #sun-clock-hand {
+      position: absolute;
+      left: 21px;
+      bottom: 21px;
+      width: 2px;
+      height: 17px;
+      border-radius: 2px;
+      background: #fff0a5;
+      box-shadow: 0 0 7px #ffb84e;
+      transform: rotate(-135deg);
+      transform-origin: 50% 100%;
+      transition: transform .15s linear, background .3s, box-shadow .3s;
+    }
+
+    #sun-clock-hand::before {
+      content: "";
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff3a8;
+      box-shadow: 0 0 8px #ffc04f;
+    }
+
+    #sunset-label { color: #d8cebc; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+    #sunset-countdown { display: block; margin-top: 2px; color: #ffe5a1; font-family: ui-monospace, monospace; font-size: 13px; }
+
+    #minimap-panel {
+      position: absolute;
+      left: max(12px, env(safe-area-inset-left));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      width: 210px;
+      padding: 8px;
+      border: 1px solid rgba(240,185,79,.42);
+      border-radius: 4px;
+      background: rgba(5,6,12,.78);
+      box-shadow: 0 8px 28px rgba(0,0,0,.42);
+    }
+
+    .minimap-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: #f3d687;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    #treasure-hint {
+      max-width: 142px;
+      overflow: hidden;
+      color: #bdb5a7;
+      font-size: 9px;
+      letter-spacing: 0;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #minimap {
+      display: block;
+      width: 192px;
+      height: 122px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: #233b31;
+    }
+
+    .minimap-legend {
+      display: flex;
+      justify-content: center;
+      gap: 13px;
+      margin-top: 5px;
+      color: #aaa293;
+      font-size: 8px;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 3px;
+      border-radius: 50%;
+      vertical-align: -1px;
+    }
+
+    .legend-player { background: #fff4bd; box-shadow: 0 0 5px #ffcd53; }
+    .legend-treasure { background: #f3a72f; border-radius: 1px; transform: rotate(45deg); }
 
     #pause-button {
       position: absolute;
@@ -373,15 +496,26 @@
       .choice-card { min-height: 105px; }
       .modal-panel { max-height: 92vh; overflow: auto; padding: 20px 14px; }
       .hud-card { min-width: 58vw; }
-      .time-card { min-width: 128px; }
+      .time-card { min-width: 150px; }
+      #minimap-panel { width: 174px; }
+      #minimap { width: 156px; height: 99px; }
       .control-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 470px) {
       #character-grid { grid-template-columns: 1fr; }
       .character-card { min-height: 150px; }
-      .time-card { min-width: 108px; }
+      .time-card { min-width: 126px; }
       #timer { font-size: 18px; }
+      .sun-clock { grid-template-columns: 38px 1fr; gap: 6px; }
+      .sun-clock-dial { width: 38px; height: 38px; }
+      .sun-clock-dial::before { top: 17px; }
+      .sun-clock-dial::after { left: 17px; }
+      #sun-clock-hand { left: 17px; bottom: 17px; height: 14px; }
+      #run-stats { display: none; }
+      #minimap-panel { width: 148px; padding: 6px; }
+      #minimap { width: 134px; height: 85px; }
+      #treasure-hint { max-width: 92px; }
       .bar-row { grid-template-columns: 24px 1fr 52px; }
     }
 
@@ -446,9 +580,24 @@
         <div class="bar-row"><b>EXP</b><div class="bar"><i id="xp-fill"></i></div><span id="level-text">LV 1</span></div>
       </div>
       <div class="time-card">
+        <div class="sun-clock" aria-label="일몰까지 남은 시간">
+          <div class="sun-clock-dial"><i id="sun-clock-hand"></i></div>
+          <div>
+            <span id="sunset-label">해 질 때까지</span>
+            <strong id="sunset-countdown">00:55</strong>
+          </div>
+        </div>
         <div id="phase">낮</div>
         <div id="timer">00:00</div>
         <div id="run-stats">처치 0 · 공격력 0</div>
+      </div>
+    </div>
+    <div id="minimap-panel">
+      <div class="minimap-title"><span>전장 지도</span><span id="treasure-hint">보물 없음</span></div>
+      <canvas id="minimap" width="384" height="244" aria-label="플레이어와 보물 위치 지도"></canvas>
+      <div class="minimap-legend">
+        <span><i class="legend-dot legend-player"></i>나</span>
+        <span><i class="legend-dot legend-treasure"></i>보물</span>
       </div>
     </div>
     <button id="pause-button" aria-label="일시정지">Ⅱ</button>
@@ -478,6 +627,6 @@
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260728-1"></script>
+  <script src="./src/game.js?v=20260728-2"></script>
 </body>
 </html>

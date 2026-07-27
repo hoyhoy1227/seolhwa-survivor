@@ -2,7 +2,9 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260728-1';
+const SPRITE_VERSION = '20260728-2';
+const SUNSET_START = 34;
+const NIGHT_START = 55;
 const SPRITE_BASE = window.location.hostname.endsWith('github.io')
   ? 'https://raw.githubusercontent.com/hoyhoy1227/seolhwa-survivor/main/assets/sprites'
   : './assets/sprites';
@@ -284,6 +286,11 @@ const ui = {
   phase: document.getElementById('phase'),
   timer: document.getElementById('timer'),
   runStats: document.getElementById('run-stats'),
+  sunsetLabel: document.getElementById('sunset-label'),
+  sunsetCountdown: document.getElementById('sunset-countdown'),
+  sunClockHand: document.getElementById('sun-clock-hand'),
+  minimap: document.getElementById('minimap'),
+  treasureHint: document.getElementById('treasure-hint'),
   toast: document.getElementById('toast'),
   choice: document.getElementById('choice-screen'),
   choiceKicker: document.getElementById('choice-kicker'),
@@ -333,7 +340,7 @@ function buildCharacterCards() {
       audio.click();
       hideScreens();
       ui.hud.classList.remove('hidden');
-      currentScene().scene.restart({ character });
+      window.game.scene.start('GameScene', { character });
     });
     ui.characterGrid.appendChild(card);
   });
@@ -341,10 +348,18 @@ function buildCharacterCards() {
 
 function showTitle() {
   audio.stopBgm();
+  window.clearTimeout(toastTimer);
+  ui.toast.classList.remove('show');
+  ui.toast.textContent = '';
+  const scene = currentScene();
+  if (scene?.scene.isActive() || scene?.scene.isPaused() || scene?.scene.isSleeping()) {
+    scene.state = 'menu';
+    scene.physics?.pause();
+    scene.scene.stop();
+  }
   hideScreens();
   ui.hud.classList.add('hidden');
   ui.title.classList.remove('hidden');
-  currentScene()?.scene.restart();
 }
 
 document.getElementById('start-button').addEventListener('click', () => {
@@ -801,12 +816,12 @@ class GameScene extends Phaser.Scene {
     let darkness = 0;
     let dayMix = 0;
 
-    if (this.elapsed >= 55) {
+    if (this.elapsed >= NIGHT_START) {
       phase = '밤 · 호롱불';
       darkness = .86;
       dayMix = 1;
-    } else if (this.elapsed >= 34) {
-      const dusk = (this.elapsed - 34) / 21;
+    } else if (this.elapsed >= SUNSET_START) {
+      const dusk = (this.elapsed - SUNSET_START) / (NIGHT_START - SUNSET_START);
       phase = '황혼';
       darkness = dusk * .86;
       dayMix = dusk;
@@ -837,7 +852,7 @@ class GameScene extends Phaser.Scene {
 
     ui.phase.textContent = phase;
     ui.phase.style.color = phase.startsWith('밤') ? '#9fc9ef' : phase === '황혼' ? '#ef9d62' : '#f0b94f';
-    audio.setNight(this.elapsed >= 55);
+    audio.setNight(this.elapsed >= NIGHT_START);
   }
 
   updateEnemiesAndPickups(deltaSeconds) {
@@ -1091,7 +1106,8 @@ class GameScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
       duration: 720
     });
-    showToast('보물상자가 나타났습니다!');
+    const location = this.getTreasureDirection(chest);
+    showToast(`보물상자가 나타났습니다! 지도에서 ${location}을 확인하세요.`, 3200);
   }
 
   openChest(player, chest) {
@@ -1285,6 +1301,106 @@ class GameScene extends Phaser.Scene {
     const seconds = Math.floor(this.elapsed % 60).toString().padStart(2, '0');
     ui.timer.textContent = `${minutes}:${seconds}`;
     ui.runStats.textContent = `처치 ${this.kills} · 공격력 ${Math.round(this.stats.damage)} · 방어 ${this.stats.armor}`;
+    this.updateSunClock();
+    this.drawMinimap();
+  }
+
+  updateSunClock() {
+    const progress = Phaser.Math.Clamp(this.elapsed / NIGHT_START, 0, 1);
+    const angle = -135 + progress * 270;
+    ui.sunClockHand.style.transform = `rotate(${angle}deg)`;
+
+    if (this.elapsed < NIGHT_START) {
+      const remaining = Math.max(0, Math.ceil(NIGHT_START - this.elapsed));
+      ui.sunsetLabel.textContent = this.elapsed < SUNSET_START ? '해 질 때까지' : '황혼 · 밤까지';
+      ui.sunsetCountdown.textContent = `00:${remaining.toString().padStart(2, '0')}`;
+      ui.sunClockHand.style.background = this.elapsed < SUNSET_START ? '#fff0a5' : '#ff9860';
+      ui.sunClockHand.style.boxShadow = this.elapsed < SUNSET_START ? '0 0 7px #ffb84e' : '0 0 7px #e9684d';
+    } else {
+      ui.sunsetLabel.textContent = '달이 떴습니다';
+      ui.sunsetCountdown.textContent = '밤';
+      ui.sunClockHand.style.background = '#cce5ff';
+      ui.sunClockHand.style.boxShadow = '0 0 7px #8dbde8';
+    }
+  }
+
+  getTreasureDirection(chest) {
+    if (!chest?.active || !this.player?.active) return '보물 없음';
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, chest.x, chest.y);
+    const octant = Math.round((angle + Math.PI * 2) / (Math.PI / 4)) % 8;
+    const directions = ['동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽', '북쪽', '북동쪽'];
+    const distance = Math.round(Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) / 10) * 10;
+    return `보물 ${directions[octant]} · ${distance}걸음`;
+  }
+
+  drawMinimap() {
+    const canvas = ui.minimap;
+    const context = canvas?.getContext('2d');
+    if (!context || !this.player?.active) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const scaleX = width / WORLD_WIDTH;
+    const scaleY = height / WORLD_HEIGHT;
+    const mapColor = this.elapsed >= NIGHT_START ? '#142429' : this.elapsed >= SUNSET_START ? '#3b4035' : '#294839';
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = mapColor;
+    context.fillRect(0, 0, width, height);
+
+    context.fillStyle = this.elapsed >= NIGHT_START ? 'rgba(119,111,104,.3)' : 'rgba(181,159,111,.34)';
+    context.fillRect(0, (WORLD_HEIGHT / 2 - 68) * scaleY, width, 136 * scaleY);
+    context.fillRect((WORLD_WIDTH / 2 - 72) * scaleX, 0, 144 * scaleX, height);
+
+    context.fillStyle = 'rgba(42,76,55,.9)';
+    [
+      [230, 250], [2140, 310], [300, 1480], [2050, 1430],
+      [720, 620], [1690, 1180]
+    ].forEach(([x, y]) => {
+      context.beginPath();
+      context.arc(x * scaleX, y * scaleY, 8, 0, Math.PI * 2);
+      context.fill();
+    });
+
+    const camera = this.cameras.main;
+    context.strokeStyle = 'rgba(255,255,255,.38)';
+    context.lineWidth = 3;
+    context.strokeRect(camera.worldView.x * scaleX, camera.worldView.y * scaleY, camera.worldView.width * scaleX, camera.worldView.height * scaleY);
+
+    const activeChests = this.chests?.getChildren().filter(chest => chest.active) || [];
+    activeChests.forEach(chest => {
+      const x = chest.x * scaleX;
+      const y = chest.y * scaleY;
+      const pulse = 8 + Math.sin(this.time.now * .008) * 3;
+      context.strokeStyle = 'rgba(255,211,106,.55)';
+      context.lineWidth = 4;
+      context.beginPath();
+      context.arc(x, y, pulse, 0, Math.PI * 2);
+      context.stroke();
+      context.save();
+      context.translate(x, y);
+      context.rotate(Math.PI / 4);
+      context.fillStyle = '#ffb738';
+      context.fillRect(-7, -7, 14, 14);
+      context.strokeStyle = '#fff0a3';
+      context.lineWidth = 2;
+      context.strokeRect(-7, -7, 14, 14);
+      context.restore();
+    });
+
+    context.beginPath();
+    context.arc(this.player.x * scaleX, this.player.y * scaleY, 7, 0, Math.PI * 2);
+    context.fillStyle = '#fff4bd';
+    context.shadowColor = '#ffcb4f';
+    context.shadowBlur = 10;
+    context.fill();
+    context.shadowBlur = 0;
+    context.strokeStyle = '#793c24';
+    context.lineWidth = 3;
+    context.stroke();
+
+    ui.treasureHint.textContent = activeChests.length ? this.getTreasureDirection(activeChests[0]) : '보물 없음';
+    ui.treasureHint.style.color = activeChests.length ? '#ffd36a' : '#bdb5a7';
   }
 
   resetPauseCopy() {
