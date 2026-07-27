@@ -1,5 +1,7 @@
 const WIDTH = 960;
 const HEIGHT = 640;
+const WORLD_WIDTH = 2400;
+const WORLD_HEIGHT = 1800;
 
 const CHARACTERS = [
   {
@@ -265,6 +267,7 @@ const audio = new GameAudio();
 
 const ui = {
   title: document.getElementById('title-screen'),
+  how: document.getElementById('how-screen'),
   characters: document.getElementById('character-screen'),
   characterGrid: document.getElementById('character-grid'),
   hud: document.getElementById('hud'),
@@ -299,6 +302,7 @@ function showToast(message, duration = 2200) {
 
 function hideScreens() {
   ui.title.classList.add('hidden');
+  ui.how.classList.add('hidden');
   ui.characters.classList.add('hidden');
   ui.choice.classList.add('hidden');
   ui.pause.classList.add('hidden');
@@ -347,7 +351,14 @@ document.getElementById('start-button').addEventListener('click', () => {
 
 document.getElementById('how-button').addEventListener('click', () => {
   audio.click();
-  showToast('적을 처치해 경험치를 모으고, 보물상자에서 희귀 능력을 얻으세요. 밤에는 호롱불 밖의 적이 보이지 않습니다.', 4800);
+  ui.title.classList.add('hidden');
+  ui.how.classList.remove('hidden');
+});
+
+document.getElementById('how-back').addEventListener('click', () => {
+  audio.click();
+  ui.how.classList.add('hidden');
+  ui.title.classList.remove('hidden');
 });
 
 document.getElementById('sound-button').addEventListener('click', event => {
@@ -411,6 +422,7 @@ class GameScene extends Phaser.Scene {
     this.createGeneratedTextures();
 
     this.enemies = this.physics.add.group();
+    this.enemyProjectiles = this.physics.add.group();
     this.projectiles = this.physics.add.group();
     this.orbs = this.physics.add.group();
     this.chests = this.physics.add.group();
@@ -429,7 +441,7 @@ class GameScene extends Phaser.Scene {
     this.lastRegenAt = 0;
 
     this.spawnEvent = this.time.addEvent({
-      delay: 720,
+      delay: 820,
       loop: true,
       callback: () => {
         if (this.state === 'running') this.spawnEnemy();
@@ -446,62 +458,74 @@ class GameScene extends Phaser.Scene {
   }
 
   createWorld() {
-    this.sky = this.add.rectangle(0, 0, WIDTH, HEIGHT, 0x88cdea).setOrigin(0).setDepth(-20);
-    this.sun = this.add.circle(790, 92, 36, 0xffefab).setDepth(-18);
-    this.moon = this.add.circle(150, 100, 29, 0xdce8f3).setDepth(-18).setAlpha(0);
+    this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.roundPixels = true;
 
-    const mountains = this.add.graphics().setDepth(-15);
-    mountains.fillStyle(0x557b72, 1);
-    mountains.beginPath();
-    mountains.moveTo(0, 390);
-    mountains.lineTo(90, 235);
-    mountains.lineTo(175, 350);
-    mountains.lineTo(300, 205);
-    mountains.lineTo(430, 355);
-    mountains.lineTo(585, 190);
-    mountains.lineTo(730, 350);
-    mountains.lineTo(860, 230);
-    mountains.lineTo(WIDTH, 370);
-    mountains.lineTo(WIDTH, HEIGHT);
-    mountains.lineTo(0, HEIGHT);
-    mountains.closePath();
-    mountains.fillPath();
+    this.ground = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x496d4f)
+      .setOrigin(0)
+      .setDepth(-30);
 
-    const foreground = this.add.graphics().setDepth(-14);
-    foreground.fillStyle(0x314b45, 1);
-    foreground.beginPath();
-    foreground.moveTo(0, 440);
-    foreground.lineTo(130, 325);
-    foreground.lineTo(260, 440);
-    foreground.lineTo(410, 300);
-    foreground.lineTo(560, 440);
-    foreground.lineTo(750, 315);
-    foreground.lineTo(960, 455);
-    foreground.lineTo(960, 640);
-    foreground.lineTo(0, 640);
-    foreground.closePath();
-    foreground.fillPath();
-
-    this.ground = this.add.rectangle(0, 420, WIDTH, 220, 0x365444).setOrigin(0).setDepth(-12);
-    const trail = this.add.graphics().setDepth(-11);
-    trail.fillStyle(0x8c7a59, .55);
-    trail.beginPath();
-    trail.moveTo(410, HEIGHT);
-    trail.lineTo(455, 420);
-    trail.lineTo(565, 420);
-    trail.lineTo(650, HEIGHT);
-    trail.closePath();
-    trail.fillPath();
-
-    const detail = this.add.graphics().setDepth(-10);
-    for (let index = 0; index < 75; index += 1) {
-      const x = Phaser.Math.Between(10, WIDTH - 10);
-      const y = Phaser.Math.Between(430, HEIGHT - 8);
-      detail.fillStyle(index % 3 === 0 ? 0x89a35b : 0x254337, Phaser.Math.FloatBetween(.35, .75));
-      detail.fillRect(x, y, Phaser.Math.Between(2, 5), Phaser.Math.Between(2, 5));
+    const terrain = this.add.graphics().setDepth(-28);
+    const tileSize = 120;
+    for (let row = 0; row < WORLD_HEIGHT / tileSize; row += 1) {
+      for (let column = 0; column < WORLD_WIDTH / tileSize; column += 1) {
+        const shade = (row + column) % 2 === 0 ? 0x426648 : 0x4d7352;
+        terrain.fillStyle(shade, .32);
+        terrain.fillRect(column * tileSize, row * tileSize, tileSize, tileSize);
+      }
     }
 
-    this.darkness = this.add.rectangle(0, 0, WIDTH, HEIGHT, 0x02030a, 1)
+    terrain.fillStyle(0x988361, .34);
+    terrain.fillRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
+    terrain.fillRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
+    terrain.lineStyle(3, 0xb9a276, .18);
+    terrain.strokeRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
+    terrain.strokeRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
+
+    const details = this.add.graphics().setDepth(-26);
+    for (let index = 0; index < 420; index += 1) {
+      const x = Phaser.Math.Between(24, WORLD_WIDTH - 24);
+      const y = Phaser.Math.Between(24, WORLD_HEIGHT - 24);
+      const type = index % 5;
+      if (type === 0) {
+        details.fillStyle(0x1f4636, .75);
+        details.fillCircle(x, y, Phaser.Math.Between(3, 7));
+        details.fillStyle(0x315b42, .75);
+        details.fillCircle(x + 5, y + 2, Phaser.Math.Between(2, 5));
+      } else if (type === 1) {
+        details.fillStyle(0xd8b55c, .65);
+        details.fillRect(x, y, 3, 8);
+        details.fillRect(x - 2, y + 2, 7, 3);
+      } else {
+        details.fillStyle(type === 2 ? 0x7da05d : 0x31543f, .62);
+        details.fillRect(x, y, Phaser.Math.Between(2, 5), Phaser.Math.Between(2, 6));
+      }
+    }
+
+    const landmarks = this.add.graphics().setDepth(-24);
+    [
+      [230, 250], [2140, 310], [300, 1480], [2050, 1430],
+      [720, 620], [1690, 1180]
+    ].forEach(([x, y], index) => {
+      landmarks.fillStyle(0x263f35, .9);
+      landmarks.fillCircle(x, y + 18, 42);
+      landmarks.fillStyle(index % 2 ? 0x274f39 : 0x315c43, 1);
+      landmarks.fillCircle(x - 22, y, 28);
+      landmarks.fillCircle(x + 20, y - 6, 32);
+      landmarks.fillStyle(0x6a4b33, .8);
+      landmarks.fillRect(x - 5, y + 18, 10, 34);
+    });
+
+    this.sun = this.add.circle(WIDTH - 90, 92, 30, 0xffefab)
+      .setDepth(-5)
+      .setScrollFactor(0);
+    this.moon = this.add.circle(92, 92, 25, 0xdce8f3)
+      .setDepth(-5)
+      .setScrollFactor(0)
+      .setAlpha(0);
+
+    this.darkness = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x02030a, 1)
       .setOrigin(0)
       .setDepth(200)
       .setAlpha(0);
@@ -510,25 +534,63 @@ class GameScene extends Phaser.Scene {
     this.lightMask.invertAlpha = true;
     this.darkness.setMask(this.lightMask);
     this.lantern = this.add.image(0, 0, 'lantern')
-      .setDisplaySize(48, 48)
+      .setDisplaySize(52, 52)
       .setDepth(199)
       .setVisible(false);
   }
 
   createGeneratedTextures() {
-    if (!this.textures.exists('enemy')) {
+    if (!this.textures.exists('enemy-melee')) {
       const graphics = this.make.graphics({ add: false });
-      graphics.fillStyle(0xe8eee9, 1);
-      graphics.fillCircle(16, 12, 10);
-      graphics.fillRoundedRect(6, 10, 20, 20, 7);
-      graphics.fillStyle(0x24263b, 1);
-      graphics.fillCircle(12, 11, 2);
-      graphics.fillCircle(20, 11, 2);
-      graphics.fillStyle(0xb8c2c5, 1);
-      graphics.fillTriangle(6, 25, 10, 31, 14, 25);
-      graphics.fillTriangle(14, 25, 18, 31, 22, 25);
-      graphics.fillTriangle(22, 25, 26, 31, 28, 25);
-      graphics.generateTexture('enemy', 32, 32);
+      graphics.fillStyle(0x481f2a, 1);
+      graphics.fillRoundedRect(7, 11, 26, 27, 8);
+      graphics.fillStyle(0x9b3f35, 1);
+      graphics.fillCircle(20, 15, 12);
+      graphics.fillTriangle(8, 8, 12, 0, 17, 10);
+      graphics.fillTriangle(23, 9, 29, 1, 32, 13);
+      graphics.fillStyle(0xf0bd66, 1);
+      graphics.fillRect(13, 13, 5, 4);
+      graphics.fillRect(23, 13, 5, 4);
+      graphics.fillStyle(0x15131d, 1);
+      graphics.fillRect(15, 14, 2, 2);
+      graphics.fillRect(24, 14, 2, 2);
+      graphics.fillStyle(0xd8d1be, 1);
+      graphics.fillTriangle(17, 22, 20, 28, 23, 22);
+      graphics.fillStyle(0x2d2734, 1);
+      graphics.fillRect(4, 31, 8, 8);
+      graphics.fillRect(28, 31, 8, 8);
+      graphics.generateTexture('enemy-melee', 40, 40);
+      graphics.destroy();
+    }
+
+    if (!this.textures.exists('enemy-ranged')) {
+      const graphics = this.make.graphics({ add: false });
+      graphics.fillStyle(0x34294f, 1);
+      graphics.fillRoundedRect(7, 8, 26, 31, 10);
+      graphics.fillStyle(0xb6a2d7, 1);
+      graphics.fillCircle(20, 13, 11);
+      graphics.fillStyle(0x241d38, 1);
+      graphics.fillRect(12, 12, 5, 4);
+      graphics.fillRect(23, 12, 5, 4);
+      graphics.fillStyle(0xd5c8ed, 1);
+      graphics.fillTriangle(7, 31, 12, 40, 17, 31);
+      graphics.fillTriangle(17, 31, 22, 40, 27, 31);
+      graphics.fillTriangle(27, 31, 32, 40, 35, 29);
+      graphics.lineStyle(3, 0xc86c52, 1);
+      graphics.strokeCircle(20, 23, 6);
+      graphics.generateTexture('enemy-ranged', 40, 40);
+      graphics.destroy();
+    }
+
+    if (!this.textures.exists('enemy-projectile')) {
+      const graphics = this.make.graphics({ add: false });
+      graphics.fillStyle(0xd47bff, .35);
+      graphics.fillCircle(8, 8, 8);
+      graphics.fillStyle(0xcab0ff, 1);
+      graphics.fillCircle(8, 8, 5);
+      graphics.fillStyle(0xffffff, 1);
+      graphics.fillCircle(7, 6, 2);
+      graphics.generateTexture('enemy-projectile', 16, 16);
       graphics.destroy();
     }
 
@@ -579,13 +641,24 @@ class GameScene extends Phaser.Scene {
     this.nextChestAt = 22;
     this.state = 'running';
 
-    this.player = this.physics.add.sprite(WIDTH / 2, HEIGHT / 2, character.id)
-      .setDisplaySize(62, 62)
+    this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, character.id)
+      .setDisplaySize(68, 68)
       .setDepth(30)
       .setCollideWorldBounds(true);
-    this.player.body.setCircle(88, 40, 72);
+    this.player.body.setCircle(78, 50, 68);
+    this.player.setData('baseScaleX', this.player.scaleX);
+    this.player.setData('baseScaleY', this.player.scaleY);
+    this.cameras.main.startFollow(this.player, true, .11, .11);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
 
     this.playerEnemyOverlap = this.physics.add.overlap(this.player, this.enemies, this.onPlayerHit, null, this);
+    this.playerEnemyProjectileOverlap = this.physics.add.overlap(
+      this.player,
+      this.enemyProjectiles,
+      this.onEnemyProjectileHit,
+      null,
+      this
+    );
     this.playerOrbOverlap = this.physics.add.overlap(this.player, this.orbs, this.collectOrb, null, this);
     this.playerChestOverlap = this.physics.add.overlap(this.player, this.chests, this.openChest, null, this);
 
@@ -653,6 +726,21 @@ class GameScene extends Phaser.Scene {
       (vertical / magnitude) * this.stats.speed
     );
     if (horizontal !== 0) this.player.setFlipX(horizontal < 0);
+
+    const moving = horizontal !== 0 || vertical !== 0;
+    const baseScaleX = this.player.getData('baseScaleX');
+    const baseScaleY = this.player.getData('baseScaleY');
+    if (moving) {
+      const stride = Math.sin(this.time.now * .018);
+      this.player.setScale(
+        baseScaleX * (1 + stride * .035),
+        baseScaleY * (1 - stride * .045)
+      );
+      this.player.setAngle(stride * 2.4);
+    } else {
+      this.player.setScale(baseScaleX, baseScaleY);
+      this.player.setAngle(0);
+    }
   }
 
   updateDayNight() {
@@ -671,17 +759,16 @@ class GameScene extends Phaser.Scene {
       dayMix = dusk;
     }
 
-    const day = { r: 136, g: 205, b: 234 };
-    const dusk = { r: 196, g: 93, b: 72 };
-    const night = { r: 7, g: 10, b: 29 };
+    const dayGround = { r: 73, g: 109, b: 79 };
+    const duskGround = { r: 78, g: 77, b: 62 };
+    const nightGround = { r: 25, g: 43, b: 44 };
     const firstMix = Math.min(1, dayMix * 2);
     const secondMix = Math.max(0, dayMix * 2 - 1);
-    let color = Phaser.Display.Color.Interpolate.ColorWithColor(day, dusk, 100, firstMix * 100);
-    if (secondMix > 0) color = Phaser.Display.Color.Interpolate.ColorWithColor(dusk, night, 100, secondMix * 100);
-    this.sky.setFillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
-    this.ground.setFillStyle(dayMix < .5 ? 0x365444 : 0x172b2d);
-    this.sun.setAlpha(1 - dayMix).setPosition(790 - dayMix * 230, 92 + dayMix * 110);
-    this.moon.setAlpha(Math.max(0, dayMix * 1.4 - .4)).setPosition(130 + dayMix * 70, 120 - dayMix * 50);
+    let color = Phaser.Display.Color.Interpolate.ColorWithColor(dayGround, duskGround, 100, firstMix * 100);
+    if (secondMix > 0) color = Phaser.Display.Color.Interpolate.ColorWithColor(duskGround, nightGround, 100, secondMix * 100);
+    this.ground.setFillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
+    this.sun.setAlpha(1 - dayMix).setPosition(WIDTH - 90 - dayMix * 100, 92 + dayMix * 55);
+    this.moon.setAlpha(Math.max(0, dayMix * 1.4 - .4)).setPosition(92 + dayMix * 55, 92 - dayMix * 20);
     this.darkness.setAlpha(darkness);
 
     const lanternVisible = dayMix > .08;
@@ -689,6 +776,7 @@ class GameScene extends Phaser.Scene {
     if (lanternVisible) {
       this.lantern.setPosition(this.player.x + (this.player.flipX ? -22 : 22), this.player.y + 10);
       this.lantern.setFlipX(this.player.flipX);
+      this.lantern.setAngle(Math.sin(this.time.now * .01) * 3);
       this.lightGraphics.clear();
       this.lightGraphics.fillStyle(0xffffff, 1);
       this.lightGraphics.fillCircle(this.lantern.x, this.lantern.y, this.stats.lightRadius);
@@ -703,7 +791,22 @@ class GameScene extends Phaser.Scene {
     this.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
       const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
-      this.physics.velocityFromRotation(angle, enemy.speed, enemy.body.velocity);
+      const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
+      if (enemy.kind === 'ranged') {
+        if (distance < 210) {
+          this.physics.velocityFromRotation(angle + Math.PI, enemy.speed * .8, enemy.body.velocity);
+        } else if (distance > 330) {
+          this.physics.velocityFromRotation(angle, enemy.speed, enemy.body.velocity);
+        } else {
+          const strafe = Math.sin(this.time.now * .0015 + enemy.x) > 0 ? 1 : -1;
+          this.physics.velocityFromRotation(angle + strafe * Math.PI / 2, enemy.speed * .45, enemy.body.velocity);
+        }
+        if (distance < 440 && this.time.now >= enemy.nextAttackAt) this.fireEnemyProjectile(enemy, angle);
+      } else {
+        this.physics.velocityFromRotation(angle, enemy.speed, enemy.body.velocity);
+      }
+      enemy.setFlipX(enemy.body.velocity.x < 0);
+      enemy.setAngle(Math.sin(this.time.now * .012 + enemy.x * .03) * (enemy.kind === 'ranged' ? 2 : 3.5));
     });
 
     this.orbs.getChildren().forEach(orb => {
@@ -720,6 +823,9 @@ class GameScene extends Phaser.Scene {
     this.projectiles.getChildren().forEach(projectile => {
       if (projectile.active && this.time.now - projectile.getData('bornAt') > 1600) projectile.destroy();
     });
+    this.enemyProjectiles.getChildren().forEach(projectile => {
+      if (projectile.active && this.time.now - projectile.getData('bornAt') > 4600) projectile.destroy();
+    });
 
     if (this.stats.regen > 0) {
       this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + this.stats.regen * deltaSeconds * .03);
@@ -728,29 +834,45 @@ class GameScene extends Phaser.Scene {
 
   spawnEnemy() {
     if (!this.player?.active) return;
-    const edge = Phaser.Math.Between(0, 3);
-    let x;
-    let y;
-    if (edge === 0) { x = -24; y = Phaser.Math.Between(40, HEIGHT - 30); }
-    if (edge === 1) { x = WIDTH + 24; y = Phaser.Math.Between(40, HEIGHT - 30); }
-    if (edge === 2) { x = Phaser.Math.Between(30, WIDTH - 30); y = -24; }
-    if (edge === 3) { x = Phaser.Math.Between(30, WIDTH - 30); y = HEIGHT + 24; }
+    const spawnAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const spawnDistance = Phaser.Math.Between(430, 560);
+    const x = Phaser.Math.Clamp(
+      this.player.x + Math.cos(spawnAngle) * spawnDistance,
+      28,
+      WORLD_WIDTH - 28
+    );
+    const y = Phaser.Math.Clamp(
+      this.player.y + Math.sin(spawnAngle) * spawnDistance,
+      28,
+      WORLD_HEIGHT - 28
+    );
 
-    const eliteChance = Math.min(.22, .03 + this.elapsed / 700);
+    const eliteChance = Math.min(.18, .025 + this.elapsed / 850);
     const elite = Math.random() < eliteChance;
-    const enemy = this.enemies.create(x, y, 'enemy')
-      .setDisplaySize(elite ? 48 : 36, elite ? 48 : 36)
+    const ranged = Math.random() < .18;
+    const enemy = this.enemies.create(x, y, ranged ? 'enemy-ranged' : 'enemy-melee')
+      .setDisplaySize(elite ? 52 : ranged ? 39 : 43, elite ? 52 : ranged ? 39 : 43)
       .setDepth(20);
-    enemy.hp = (16 + this.level * 4 + this.elapsed * .22) * (elite ? 3.2 : 1);
-    enemy.speed = 48 + Math.min(62, this.elapsed * .42) + (elite ? 7 : 0);
-    enemy.damage = 7 + Math.floor(this.elapsed / 25) + (elite ? 5 : 0);
-    enemy.xpValue = elite ? 7 : 3;
+    enemy.hp = (18 + this.level * 4 + this.elapsed * .18) * (elite ? 3 : 1);
+    enemy.speed = (ranged ? 30 : 38) + Math.min(ranged ? 18 : 30, this.elapsed * .16) + (elite ? 4 : 0);
+    enemy.damage = (ranged ? 5 : 6) + Math.floor(this.elapsed / 35) + (elite ? 4 : 0);
+    enemy.xpValue = elite ? 8 : ranged ? 4 : 3;
     enemy.elite = elite;
-    enemy.setTint(elite ? 0xf0a33a : Phaser.Display.Color.GetColor(
-      Phaser.Math.Between(175, 235),
-      Phaser.Math.Between(185, 235),
-      Phaser.Math.Between(195, 240)
-    ));
+    enemy.kind = ranged ? 'ranged' : 'melee';
+    enemy.nextAttackAt = this.time.now + Phaser.Math.Between(2200, 3400);
+    enemy.nextContactAt = 0;
+    if (elite) enemy.setTint(0xf0a33a);
+  }
+
+  fireEnemyProjectile(enemy, angle) {
+    if (!enemy?.active || this.state !== 'running') return;
+    enemy.nextAttackAt = this.time.now + Phaser.Math.Between(2600, 3800);
+    const projectile = this.enemyProjectiles.create(enemy.x, enemy.y, 'enemy-projectile')
+      .setDisplaySize(14, 14)
+      .setDepth(24);
+    projectile.damage = enemy.damage;
+    projectile.setData('bornAt', this.time.now);
+    this.physics.velocityFromRotation(angle, enemy.elite ? 124 : 108, projectile.body.velocity);
   }
 
   autoAttack() {
@@ -829,28 +951,61 @@ class GameScene extends Phaser.Scene {
 
   spawnChest(forcedX, forcedY) {
     if (this.chests.countActive(true) > 0) return;
-    const x = forcedX ?? Phaser.Math.Between(120, WIDTH - 120);
-    const y = forcedY ?? Phaser.Math.Between(160, HEIGHT - 90);
+    const chestAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const x = forcedX ?? Phaser.Math.Clamp(
+      this.player.x + Math.cos(chestAngle) * Phaser.Math.Between(210, 330),
+      90,
+      WORLD_WIDTH - 90
+    );
+    const y = forcedY ?? Phaser.Math.Clamp(
+      this.player.y + Math.sin(chestAngle) * Phaser.Math.Between(210, 330),
+      90,
+      WORLD_HEIGHT - 90
+    );
     const chest = this.chests.create(x, y, 'treasure-chest')
-      .setDisplaySize(58, 58)
+      .setDisplaySize(66, 66)
       .setDepth(18)
       .setImmovable(true);
     chest.body.setAllowGravity(false);
+    chest.setData('spawnedAt', this.time.now);
     this.tweens.add({
       targets: chest,
       scaleX: chest.scaleX * 1.08,
       scaleY: chest.scaleY * 1.08,
+      angle: 2.5,
+      y: y - 7,
       yoyo: true,
       repeat: -1,
-      duration: 650
+      ease: 'Sine.easeInOut',
+      duration: 720
     });
     showToast('보물상자가 나타났습니다!');
   }
 
   openChest(player, chest) {
     if (!chest?.active || this.state !== 'running') return;
+    this.createChestBurst(chest.x, chest.y);
     chest.destroy();
     this.offerChoices(true);
+  }
+
+  createChestBurst(x, y) {
+    const burst = this.add.graphics().setDepth(40);
+    burst.lineStyle(4, 0xffd36a, 1);
+    burst.strokeCircle(x, y, 28);
+    burst.fillStyle(0xfff2ac, .9);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = index / 8 * Math.PI * 2;
+      burst.fillRect(x + Math.cos(angle) * 38 - 2, y + Math.sin(angle) * 38 - 2, 5, 5);
+    }
+    this.tweens.add({
+      targets: burst,
+      alpha: 0,
+      scaleX: 1.8,
+      scaleY: 1.8,
+      duration: 420,
+      onComplete: () => burst.destroy()
+    });
   }
 
   offerChoices(treasure) {
@@ -898,17 +1053,30 @@ class GameScene extends Phaser.Scene {
 
   onPlayerHit(player, enemy) {
     if (!enemy?.active || this.state !== 'running') return;
-    if (this.time.now - this.lastHitAt < 650) return;
+    if (this.time.now < (enemy.nextContactAt || 0)) return;
+    enemy.nextContactAt = this.time.now + 1350;
+    this.takePlayerDamage(enemy.damage, enemy.x, enemy.y);
+  }
+
+  onEnemyProjectileHit(player, projectile) {
+    if (!projectile?.active || this.state !== 'running') return;
+    const { x, y, damage } = projectile;
+    projectile.destroy();
+    this.takePlayerDamage(damage, x, y);
+  }
+
+  takePlayerDamage(rawDamage, sourceX, sourceY) {
+    if (this.time.now - this.lastHitAt < 900) return;
     this.lastHitAt = this.time.now;
-    const damage = Math.max(1, enemy.damage - this.stats.armor);
+    const damage = Math.max(1, rawDamage - this.stats.armor);
     this.stats.hp -= damage;
-    this.cameras.main.shake(80, .006);
-    player.setTintFill(0xff5c5c);
+    this.cameras.main.shake(70, .0045);
+    this.player.setTintFill(0xff5c5c);
     this.time.delayedCall(100, () => {
-      if (player.active) player.clearTint();
+      if (this.player.active) this.player.clearTint();
     });
-    const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-    player.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
+    const angle = Phaser.Math.Angle.Between(sourceX, sourceY, this.player.x, this.player.y);
+    this.player.setVelocity(Math.cos(angle) * 190, Math.sin(angle) * 190);
     audio.hit();
     if (this.stats.hp <= 0) this.gameOver();
   }

@@ -61,8 +61,10 @@
 
     .title-panel {
       width: min(760px, 94vw);
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
       text-align: center;
-      padding: 48px 24px 36px;
+      padding: clamp(24px, 5vh, 48px) 24px clamp(22px, 4vh, 36px);
       border: 1px solid var(--line);
       border-radius: 4px;
       background:
@@ -137,8 +139,14 @@
 
     .small-note {
       margin: 26px 0 0;
-      color: #8d8578;
-      font-size: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(240,185,79,.18);
+      background: rgba(0,0,0,.28);
+      color: #d8cebc;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.55;
+      text-shadow: 0 1px 2px #000;
     }
 
     .selection-panel {
@@ -321,6 +329,41 @@
     #pause-screen { background: rgba(1,2,7,.78); }
     #pause-screen .modal-panel { width: min(460px, 92vw); }
 
+    .how-panel {
+      width: min(760px, 94vw);
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: clamp(22px, 4vw, 38px);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+      text-align: left;
+    }
+
+    .control-card {
+      min-height: 112px;
+      padding: 16px;
+      border: 1px solid rgba(240,185,79,.22);
+      background: rgba(255,255,255,.035);
+    }
+
+    .control-card b {
+      display: block;
+      margin-bottom: 7px;
+      color: #f5ce77;
+      font-size: 15px;
+    }
+
+    .control-card span {
+      color: #ded4c3;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
     @media (max-width: 760px) {
       #character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .selection-panel { padding: 18px 12px; }
@@ -331,6 +374,7 @@
       .modal-panel { max-height: 92vh; overflow: auto; padding: 20px 14px; }
       .hud-card { min-width: 58vw; }
       .time-card { min-width: 128px; }
+      .control-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 470px) {
@@ -339,6 +383,13 @@
       .time-card { min-width: 108px; }
       #timer { font-size: 18px; }
       .bar-row { grid-template-columns: 24px 1fr 52px; }
+    }
+
+    @media (max-height: 680px) {
+      h1 { font-size: clamp(36px, 9vh, 58px); }
+      .subtitle { margin: 10px 0 18px; }
+      .small-note { margin-top: 14px; }
+      .game-button { min-height: 44px; padding: 9px 18px; }
     }
   </style>
 </head>
@@ -356,6 +407,23 @@
         <button id="sound-button" class="game-button secondary">소리: 켜짐</button>
       </div>
       <p class="small-note">방향키 / WASD 이동 · 자동 공격 · ESC 일시정지 · M 음소거</p>
+    </div>
+  </section>
+
+  <section id="how-screen" class="screen hidden">
+    <div class="modal-panel how-panel">
+      <p class="eyebrow">HOW TO SURVIVE</p>
+      <h2 class="section-heading">설화를 지키는 법</h2>
+      <p class="section-copy">넓은 전장을 누비며 요괴 무리를 피하고, 자동 공격으로 힘을 키우세요.</p>
+      <div class="control-grid">
+        <div class="control-card"><b>이동</b><span>방향키 또는 WASD를 사용합니다. 화면을 누르고 있어도 해당 방향으로 움직입니다.</span></div>
+        <div class="control-card"><b>공격</b><span>가장 가까운 적을 자동으로 공격합니다. 근거리 요괴 무리와 거리를 유지하세요.</span></div>
+        <div class="control-card"><b>성장</b><span>푸른 경험치 구슬을 모아 레벨업하고, 세 가지 설화 능력 중 하나를 선택합니다.</span></div>
+        <div class="control-card"><b>보물과 밤</b><span>보물상자에서 희귀 능력을 얻습니다. 밤에는 호롱불 주변만 안전하게 볼 수 있습니다.</span></div>
+      </div>
+      <div class="menu-actions">
+        <button id="how-back" class="game-button">확인</button>
+      </div>
     </div>
   </section>
 
