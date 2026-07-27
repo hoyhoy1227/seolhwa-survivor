@@ -4,7 +4,7 @@
 
 ## 바로 플레이
 
-GitHub Pages 배포 후 이 영역에 공개 게임 링크가 표시됩니다.
+**[지금 게임 플레이하기](https://hoyhoy1227.github.io/seolhwa-survivor/)**
 
 ## 조작법
 
