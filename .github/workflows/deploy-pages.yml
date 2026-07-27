@@ -32,11 +32,13 @@ jobs:
           mkdir -p _site
           cp index.html .nojekyll _site/
           cp -R src assets _site/
+          test -s _site/src/sprite-data.js
           test -s _site/assets/sprites/dokkaebi.png
           test -s _site/assets/sprites/treasure-chest.png
           test -s _site/assets/sprites/enemy-dokkaebi.png
           test -s _site/assets/sprites/enemy-gaksi.png
           test -s _site/assets/sprites/enemy-jeoseung.png
+          test -s _site/assets/sprites/ground-forest-v2.png
           find _site -type f -maxdepth 4 -print
 
       - name: Upload static site

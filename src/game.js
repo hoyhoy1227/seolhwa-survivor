@@ -2,11 +2,12 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260728-3';
+const SPRITE_VERSION = '20260728-4';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
-const spriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
+const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
+const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
 
 const CHARACTERS = [
   {
@@ -58,6 +59,32 @@ const CHARACTERS = [
     stats: { damage: 15, magic: 26, speed: 165, maxHP: 125, attackDelay: 570, regen: 1.2, lightRadius: 185 }
   }
 ];
+
+const EMBEDDED_TEXTURE_FILES = Object.freeze({
+  dokkaebi: 'dokkaebi.png',
+  gumiho: 'gumiho.png',
+  haechi: 'haechi.png',
+  sansin: 'sansin.png',
+  cheoyong: 'cheoyong.png',
+  baridegi: 'baridegi.png',
+  lantern: 'lantern.png',
+  'treasure-chest': 'treasure-chest.png',
+  'enemy-dokkaebi': 'enemy-dokkaebi.png',
+  'enemy-gaksi': 'enemy-gaksi.png',
+  'enemy-jeoseung': 'enemy-jeoseung.png',
+  'ground-forest': 'ground-forest-v2.png'
+});
+
+async function decodeEmbeddedSprites() {
+  const entries = Object.entries(window.EMBEDDED_SPRITES || {});
+  const decoded = await Promise.all(entries.map(([fileName, source]) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve([fileName, image]);
+    image.onerror = () => reject(new Error(`Embedded sprite decode failed: ${fileName}`));
+    image.src = source;
+  })));
+  return Object.fromEntries(decoded);
+}
 
 const SKILLS = [
   {
@@ -428,18 +455,16 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    CHARACTERS.forEach(character => {
-      this.load.image(character.id, spriteUrl(`${character.id}.png`));
+    Object.entries(EMBEDDED_TEXTURE_FILES).forEach(([key, fileName]) => {
+      if (this.textures.exists(key)) return;
+      const decodedImage = window.DECODED_SPRITES?.[fileName];
+      if (decodedImage) this.textures.addImage(key, decodedImage);
+      else this.load.image(key, remoteSpriteUrl(fileName));
     });
-    this.load.image('lantern', spriteUrl('lantern.png'));
-    this.load.image('treasure-chest', spriteUrl('treasure-chest.png'));
-    this.load.image('enemy-dokkaebi', spriteUrl('enemy-dokkaebi.png'));
-    this.load.image('enemy-gaksi', spriteUrl('enemy-gaksi.png'));
-    this.load.image('enemy-jeoseung', spriteUrl('enemy-jeoseung.png'));
   }
 
   create() {
-    this.ensureSpriteTextures();
+    this.validateSpriteTextures();
     this.createWorld();
     this.createGeneratedTextures();
 
@@ -479,45 +504,19 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  ensureSpriteTextures() {
-    CHARACTERS.forEach(character => {
-      if (this.textures.exists(character.id)) return;
-      const color = Phaser.Display.Color.HexStringToColor(character.accent).color;
-      const graphics = this.make.graphics({ add: false });
-      graphics.fillStyle(0x15131d, 1);
-      graphics.fillCircle(32, 28, 24);
-      graphics.fillStyle(color, 1);
-      graphics.fillCircle(32, 25, 18);
-      graphics.fillRoundedRect(16, 36, 32, 24, 8);
-      graphics.fillStyle(0xffe0a3, 1);
-      graphics.fillRect(23, 22, 5, 5);
-      graphics.fillRect(36, 22, 5, 5);
-      graphics.generateTexture(character.id, 64, 64);
-      graphics.destroy();
-    });
-
-    if (!this.textures.exists('lantern')) {
-      const graphics = this.make.graphics({ add: false });
-      graphics.fillStyle(0x442312, 1);
-      graphics.fillRoundedRect(9, 8, 46, 50, 5);
-      graphics.lineStyle(5, 0x8f5424, 1);
-      graphics.strokeRoundedRect(9, 8, 46, 50, 5);
-      graphics.fillStyle(0xffd66f, 1);
-      graphics.fillRect(17, 17, 30, 32);
-      graphics.generateTexture('lantern', 64, 64);
-      graphics.destroy();
-    }
-
-    if (!this.textures.exists('treasure-chest')) {
-      const graphics = this.make.graphics({ add: false });
-      graphics.fillStyle(0x4b2515, 1);
-      graphics.fillRoundedRect(4, 13, 56, 45, 8);
-      graphics.lineStyle(5, 0xe3a53f, 1);
-      graphics.strokeRoundedRect(4, 13, 56, 45, 8);
-      graphics.fillStyle(0xf4c35d, 1);
-      graphics.fillRect(27, 30, 10, 15);
-      graphics.generateTexture('treasure-chest', 64, 64);
-      graphics.destroy();
+  validateSpriteTextures() {
+    const required = [
+      ...CHARACTERS.map(character => character.id),
+      'lantern',
+      'treasure-chest',
+      'enemy-dokkaebi',
+      'enemy-gaksi',
+      'enemy-jeoseung',
+      'ground-forest'
+    ];
+    this.missingSpriteKeys = required.filter(key => !this.textures.exists(key));
+    if (this.missingSpriteKeys.length) {
+      console.error('Required embedded sprites failed to load:', this.missingSpriteKeys.join(', '));
     }
   }
 
@@ -526,46 +525,20 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.roundPixels = true;
 
-    this.ground = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x496d4f)
+    this.groundBase = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x263b2e)
+      .setOrigin(0)
+      .setDepth(-32);
+    this.ground = this.add.tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 'ground-forest')
       .setOrigin(0)
       .setDepth(-30);
 
     const terrain = this.add.graphics().setDepth(-28);
-    const tileSize = 120;
-    for (let row = 0; row < WORLD_HEIGHT / tileSize; row += 1) {
-      for (let column = 0; column < WORLD_WIDTH / tileSize; column += 1) {
-        const shade = (row + column) % 2 === 0 ? 0x426648 : 0x4d7352;
-        terrain.fillStyle(shade, .32);
-        terrain.fillRect(column * tileSize, row * tileSize, tileSize, tileSize);
-      }
-    }
-
-    terrain.fillStyle(0x988361, .34);
+    terrain.fillStyle(0xb09668, .28);
     terrain.fillRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
     terrain.fillRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
-    terrain.lineStyle(3, 0xb9a276, .18);
+    terrain.lineStyle(3, 0xe0bd7d, .16);
     terrain.strokeRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
     terrain.strokeRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
-
-    const details = this.add.graphics().setDepth(-26);
-    for (let index = 0; index < 420; index += 1) {
-      const x = Phaser.Math.Between(24, WORLD_WIDTH - 24);
-      const y = Phaser.Math.Between(24, WORLD_HEIGHT - 24);
-      const type = index % 5;
-      if (type === 0) {
-        details.fillStyle(0x1f4636, .75);
-        details.fillCircle(x, y, Phaser.Math.Between(3, 7));
-        details.fillStyle(0x315b42, .75);
-        details.fillCircle(x + 5, y + 2, Phaser.Math.Between(2, 5));
-      } else if (type === 1) {
-        details.fillStyle(0xd8b55c, .65);
-        details.fillRect(x, y, 3, 8);
-        details.fillRect(x - 2, y + 2, 7, 3);
-      } else {
-        details.fillStyle(type === 2 ? 0x7da05d : 0x31543f, .62);
-        details.fillRect(x, y, Phaser.Math.Between(2, 5), Phaser.Math.Between(2, 6));
-      }
-    }
 
     const landmarks = this.add.graphics().setDepth(-24);
     [
@@ -583,11 +556,13 @@ class GameScene extends Phaser.Scene {
 
     this.sun = this.add.circle(WIDTH - 90, 92, 30, 0xffefab)
       .setDepth(-5)
-      .setScrollFactor(0);
+      .setScrollFactor(0)
+      .setVisible(false);
     this.moon = this.add.circle(92, 92, 25, 0xdce8f3)
       .setDepth(-5)
       .setScrollFactor(0)
-      .setAlpha(0);
+      .setAlpha(0)
+      .setVisible(false);
 
     this.darkness = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x02030a, 1)
       .setOrigin(0)
@@ -686,6 +661,11 @@ class GameScene extends Phaser.Scene {
   }
 
   beginRun(character) {
+    if (this.missingSpriteKeys?.length) {
+      showTitle();
+      showToast('스프라이트를 불러오지 못했습니다. Ctrl+F5로 새로고침해 주세요.', 5000);
+      return;
+    }
     this.selectedCharacter = character;
     const base = character.stats;
     this.stats = {
@@ -828,14 +808,14 @@ class GameScene extends Phaser.Scene {
       dayMix = dusk;
     }
 
-    const dayGround = { r: 73, g: 109, b: 79 };
-    const duskGround = { r: 78, g: 77, b: 62 };
-    const nightGround = { r: 25, g: 43, b: 44 };
+    const dayGround = { r: 255, g: 255, b: 255 };
+    const duskGround = { r: 211, g: 177, b: 140 };
+    const nightGround = { r: 92, g: 113, b: 136 };
     const firstMix = Math.min(1, dayMix * 2);
     const secondMix = Math.max(0, dayMix * 2 - 1);
     let color = Phaser.Display.Color.Interpolate.ColorWithColor(dayGround, duskGround, 100, firstMix * 100);
     if (secondMix > 0) color = Phaser.Display.Color.Interpolate.ColorWithColor(duskGround, nightGround, 100, secondMix * 100);
-    this.ground.setFillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
+    this.ground.setTint(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
     this.sun.setAlpha(1 - dayMix).setPosition(WIDTH - 90 - dayMix * 100, 92 + dayMix * 55);
     this.moon.setAlpha(Math.max(0, dayMix * 1.4 - .4)).setPosition(92 + dayMix * 55, 92 - dayMix * 20);
     this.darkness.setAlpha(darkness);
@@ -1474,4 +1454,21 @@ const config = {
   scene: [GameScene]
 };
 
-window.game = new Phaser.Game(config);
+const startButton = document.getElementById('start-button');
+const defaultStartLabel = startButton.textContent;
+startButton.disabled = true;
+startButton.textContent = '스프라이트 불러오는 중...';
+
+decodeEmbeddedSprites()
+  .then(decodedSprites => {
+    window.DECODED_SPRITES = decodedSprites;
+  })
+  .catch(error => {
+    console.error(error);
+    window.DECODED_SPRITES = {};
+  })
+  .finally(() => {
+    window.game = new Phaser.Game(config);
+    startButton.disabled = false;
+    startButton.textContent = defaultStartLabel;
+  });
