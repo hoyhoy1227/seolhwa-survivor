@@ -30,15 +30,26 @@
 
     button { font: inherit; }
 
-    #game-container {
+    #game-shell {
       position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(100vw, 150vh);
+      height: min(100vh, 66.6667vw);
+      overflow: hidden;
+      background: #070914;
+      transform: translate(-50%, -50%);
+    }
+
+    #game-container {
+      position: absolute;
       inset: 0;
-      display: grid;
-      place-items: center;
     }
 
     canvas {
       display: block;
+      width: 100% !important;
+      height: 100% !important;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
     }
@@ -215,7 +226,7 @@
     .character-card span { color: var(--muted); font-size: 12px; line-height: 1.55; }
 
     #hud {
-      position: fixed;
+      position: absolute;
       inset: 0;
       z-index: 15;
       pointer-events: none;
@@ -234,25 +245,30 @@
 
     .hud-card {
       min-width: min(330px, 62vw);
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 4px;
-      background: rgba(5,6,12,.72);
-      box-shadow: 0 8px 24px rgba(0,0,0,.28);
+      padding: 11px 13px;
+      border: 1px solid rgba(240,185,79,.38);
+      border-radius: 5px;
+      background: rgba(4,5,10,.88);
+      box-shadow: 0 8px 26px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.06);
+      backdrop-filter: blur(4px);
     }
 
-    #hero-name { margin-bottom: 7px; font-size: 13px; font-weight: 900; letter-spacing: .06em; }
-    .bar-row { display: grid; grid-template-columns: 28px 1fr 70px; align-items: center; gap: 7px; margin-top: 5px; color: #d4ccbe; font-size: 10px; }
-    .bar { height: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: #171722; }
+    #hero-name { margin-bottom: 8px; color: #fff3d4; font-size: 13px; font-weight: 900; letter-spacing: .06em; text-shadow: 0 2px 3px #000; }
+    .bar-row { display: grid; grid-template-columns: 30px 1fr 72px; align-items: center; gap: 7px; margin-top: 6px; color: #eee4d2; font-size: 10px; font-weight: 800; text-shadow: 0 1px 2px #000; }
+    .bar { height: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.24); background: #10111a; box-shadow: inset 0 1px 4px #000; }
+    .xp-row .bar { height: 12px; border-color: rgba(115,185,232,.46); }
     .bar > i { display: block; width: 0; height: 100%; transition: width .16s; }
     #hp-fill { background: linear-gradient(90deg, #9e2b2b, #e35945); }
-    #xp-fill { background: linear-gradient(90deg, #3e74b9, #73b9e8); }
+    #xp-fill { background: linear-gradient(90deg, #3474c6, #71d9ff); box-shadow: 0 0 9px rgba(78,183,255,.62); }
 
     .time-card {
       min-width: 190px;
       padding: 9px 11px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(5,6,12,.72);
+      border: 1px solid rgba(240,185,79,.38);
+      border-radius: 5px;
+      background: rgba(4,5,10,.88);
+      box-shadow: 0 8px 26px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.06);
+      backdrop-filter: blur(4px);
       text-align: right;
     }
 
@@ -327,8 +343,9 @@
       padding: 8px;
       border: 1px solid rgba(240,185,79,.42);
       border-radius: 4px;
-      background: rgba(5,6,12,.78);
-      box-shadow: 0 8px 28px rgba(0,0,0,.42);
+      background: rgba(4,5,10,.9);
+      box-shadow: 0 8px 28px rgba(0,0,0,.62), inset 0 1px rgba(255,255,255,.05);
+      backdrop-filter: blur(4px);
     }
 
     .minimap-title {
@@ -528,7 +545,39 @@
   </style>
 </head>
 <body>
-  <div id="game-container"></div>
+  <div id="game-shell">
+    <div id="game-container"></div>
+    <aside id="hud" class="hidden" aria-live="polite">
+      <div class="hud-top">
+        <div class="hud-card">
+          <div id="hero-name">영웅</div>
+          <div class="bar-row"><b>HP</b><div class="bar"><i id="hp-fill"></i></div><span id="hp-text">0/0</span></div>
+          <div class="bar-row xp-row"><b>EXP</b><div class="bar"><i id="xp-fill"></i></div><span id="level-text">LV 1</span></div>
+        </div>
+        <div class="time-card">
+          <div class="sun-clock" aria-label="일몰까지 남은 시간">
+            <div class="sun-clock-dial"><i id="sun-clock-hand"></i></div>
+            <div>
+              <span id="sunset-label">해 질 때까지</span>
+              <strong id="sunset-countdown">00:55</strong>
+            </div>
+          </div>
+          <div id="phase">낮</div>
+          <div id="timer">00:00</div>
+          <div id="run-stats">처치 0 · 공격력 0</div>
+        </div>
+      </div>
+      <div id="minimap-panel">
+        <div class="minimap-title"><span>전장 지도</span><span id="treasure-hint">보물 없음</span></div>
+        <canvas id="minimap" width="384" height="244" aria-label="플레이어와 보물 위치 지도"></canvas>
+        <div class="minimap-legend">
+          <span><i class="legend-dot legend-player"></i>나</span>
+          <span><i class="legend-dot legend-treasure"></i>보물</span>
+        </div>
+      </div>
+      <button id="pause-button" aria-label="일시정지">Ⅱ</button>
+    </aside>
+  </div>
 
   <section id="title-screen" class="screen">
     <div class="title-panel">
@@ -572,37 +621,6 @@
     </div>
   </section>
 
-  <aside id="hud" class="hidden" aria-live="polite">
-    <div class="hud-top">
-      <div class="hud-card">
-        <div id="hero-name">영웅</div>
-        <div class="bar-row"><b>HP</b><div class="bar"><i id="hp-fill"></i></div><span id="hp-text">0/0</span></div>
-        <div class="bar-row"><b>EXP</b><div class="bar"><i id="xp-fill"></i></div><span id="level-text">LV 1</span></div>
-      </div>
-      <div class="time-card">
-        <div class="sun-clock" aria-label="일몰까지 남은 시간">
-          <div class="sun-clock-dial"><i id="sun-clock-hand"></i></div>
-          <div>
-            <span id="sunset-label">해 질 때까지</span>
-            <strong id="sunset-countdown">00:55</strong>
-          </div>
-        </div>
-        <div id="phase">낮</div>
-        <div id="timer">00:00</div>
-        <div id="run-stats">처치 0 · 공격력 0</div>
-      </div>
-    </div>
-    <div id="minimap-panel">
-      <div class="minimap-title"><span>전장 지도</span><span id="treasure-hint">보물 없음</span></div>
-      <canvas id="minimap" width="384" height="244" aria-label="플레이어와 보물 위치 지도"></canvas>
-      <div class="minimap-legend">
-        <span><i class="legend-dot legend-player"></i>나</span>
-        <span><i class="legend-dot legend-treasure"></i>보물</span>
-      </div>
-    </div>
-    <button id="pause-button" aria-label="일시정지">Ⅱ</button>
-  </aside>
-
   <div id="toast"></div>
 
   <section id="choice-screen" class="screen hidden">
@@ -627,6 +645,6 @@
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260728-2"></script>
+  <script src="./src/game.js?v=20260728-3"></script>
 </body>
 </html>

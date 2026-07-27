@@ -2,12 +2,10 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260728-2';
+const SPRITE_VERSION = '20260728-3';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
-const SPRITE_BASE = window.location.hostname.endsWith('github.io')
-  ? 'https://raw.githubusercontent.com/hoyhoy1227/seolhwa-survivor/main/assets/sprites'
-  : './assets/sprites';
+const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const spriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 
 const CHARACTERS = [
@@ -435,6 +433,9 @@ class GameScene extends Phaser.Scene {
     });
     this.load.image('lantern', spriteUrl('lantern.png'));
     this.load.image('treasure-chest', spriteUrl('treasure-chest.png'));
+    this.load.image('enemy-dokkaebi', spriteUrl('enemy-dokkaebi.png'));
+    this.load.image('enemy-gaksi', spriteUrl('enemy-gaksi.png'));
+    this.load.image('enemy-jeoseung', spriteUrl('enemy-jeoseung.png'));
   }
 
   create() {
@@ -710,7 +711,7 @@ class GameScene extends Phaser.Scene {
     this.state = 'running';
 
     this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, character.id)
-      .setDisplaySize(68, 68)
+      .setDisplaySize(78, 78)
       .setDepth(30)
       .setCollideWorldBounds(true);
     this.player.body.setCircle(78, 50, 68);
@@ -858,6 +859,11 @@ class GameScene extends Phaser.Scene {
   updateEnemiesAndPickups(deltaSeconds) {
     this.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
+      const shadow = enemy.getData('shadow');
+      if (shadow?.active) {
+        shadow.setPosition(enemy.x, enemy.y + enemy.displayHeight * .34);
+        shadow.setScale(enemy.scaleX < 0 ? -1 : 1, 1);
+      }
       if (enemy.getData('attacking') || enemy.getData('casting')) {
         enemy.setVelocity(0, 0);
         return;
@@ -939,9 +945,19 @@ class GameScene extends Phaser.Scene {
     const eliteChance = Math.min(.18, .025 + this.elapsed / 850);
     const elite = Math.random() < eliteChance;
     const ranged = Math.random() < .18;
-    const enemy = this.enemies.create(x, y, ranged ? 'enemy-ranged' : 'enemy-melee')
-      .setDisplaySize(elite ? 52 : ranged ? 39 : 43, elite ? 52 : ranged ? 39 : 43)
+    const meleeTexture = Math.random() < .62 ? 'enemy-dokkaebi' : 'enemy-gaksi';
+    const preferredTexture = ranged ? 'enemy-jeoseung' : meleeTexture;
+    const fallbackTexture = ranged ? 'enemy-ranged' : 'enemy-melee';
+    const texture = this.textures.exists(preferredTexture) ? preferredTexture : fallbackTexture;
+    const normalSize = ranged ? 58 : texture === 'enemy-gaksi' ? 62 : 64;
+    const displaySize = Math.round(normalSize * (elite ? 1.24 : 1));
+    const shadow = this.add.ellipse(x, y + displaySize * .34, displaySize * .66, displaySize * .22, 0x050508, ranged ? .28 : .4)
+      .setDepth(17);
+    const enemy = this.enemies.create(x, y, texture)
+      .setDisplaySize(displaySize, displaySize)
       .setDepth(20);
+    enemy.setData('shadow', shadow);
+    enemy.setData('folkName', ranged ? '저승사자' : texture === 'enemy-gaksi' ? '각시귀신' : '도깨비 졸개');
     enemy.hp = (18 + this.level * 4 + this.elapsed * .18) * (elite ? 3 : 1);
     enemy.speed = (ranged ? 30 : 38) + Math.min(ranged ? 18 : 30, this.elapsed * .16) + (elite ? 4 : 0);
     enemy.damage = (ranged ? 5 : 6) + Math.floor(this.elapsed / 35) + (elite ? 4 : 0);
@@ -1044,6 +1060,7 @@ class GameScene extends Phaser.Scene {
   killEnemy(enemy) {
     if (!enemy.active) return;
     const { x, y, xpValue, elite } = enemy;
+    enemy.getData('shadow')?.destroy();
     enemy.destroy();
     this.kills += 1;
     const orbCount = elite ? 3 : 1;

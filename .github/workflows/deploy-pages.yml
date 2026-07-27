@@ -34,6 +34,9 @@ jobs:
           cp -R src assets _site/
           test -s _site/assets/sprites/dokkaebi.png
           test -s _site/assets/sprites/treasure-chest.png
+          test -s _site/assets/sprites/enemy-dokkaebi.png
+          test -s _site/assets/sprites/enemy-gaksi.png
+          test -s _site/assets/sprites/enemy-jeoseung.png
           find _site -type f -maxdepth 4 -print
 
       - name: Upload static site
