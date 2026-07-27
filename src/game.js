@@ -2,6 +2,11 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
+const SPRITE_VERSION = '20260728-1';
+const SPRITE_BASE = window.location.hostname.endsWith('github.io')
+  ? 'https://raw.githubusercontent.com/hoyhoy1227/seolhwa-survivor/main/assets/sprites'
+  : './assets/sprites';
+const spriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 
 const CHARACTERS = [
   {
@@ -319,7 +324,7 @@ function buildCharacterCards() {
     card.className = 'character-card';
     card.style.setProperty('--accent', character.accent);
     card.innerHTML = `
-      <img src="./assets/sprites/${character.id}.png" alt="">
+      <img src="${spriteUrl(`${character.id}.png`)}" alt="">
       <strong>${character.name}</strong>
       <em>${character.role}</em>
       <span>${character.description}</span>
@@ -411,13 +416,14 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     CHARACTERS.forEach(character => {
-      this.load.image(character.id, `assets/sprites/${character.id}.png`);
+      this.load.image(character.id, spriteUrl(`${character.id}.png`));
     });
-    this.load.image('lantern', 'assets/sprites/lantern.png');
-    this.load.image('treasure-chest', 'assets/sprites/treasure-chest.png');
+    this.load.image('lantern', spriteUrl('lantern.png'));
+    this.load.image('treasure-chest', spriteUrl('treasure-chest.png'));
   }
 
   create() {
+    this.ensureSpriteTextures();
     this.createWorld();
     this.createGeneratedTextures();
 
@@ -454,6 +460,48 @@ class GameScene extends Phaser.Scene {
 
     if (this.initialCharacter) {
       this.time.delayedCall(0, () => this.beginRun(this.initialCharacter));
+    }
+  }
+
+  ensureSpriteTextures() {
+    CHARACTERS.forEach(character => {
+      if (this.textures.exists(character.id)) return;
+      const color = Phaser.Display.Color.HexStringToColor(character.accent).color;
+      const graphics = this.make.graphics({ add: false });
+      graphics.fillStyle(0x15131d, 1);
+      graphics.fillCircle(32, 28, 24);
+      graphics.fillStyle(color, 1);
+      graphics.fillCircle(32, 25, 18);
+      graphics.fillRoundedRect(16, 36, 32, 24, 8);
+      graphics.fillStyle(0xffe0a3, 1);
+      graphics.fillRect(23, 22, 5, 5);
+      graphics.fillRect(36, 22, 5, 5);
+      graphics.generateTexture(character.id, 64, 64);
+      graphics.destroy();
+    });
+
+    if (!this.textures.exists('lantern')) {
+      const graphics = this.make.graphics({ add: false });
+      graphics.fillStyle(0x442312, 1);
+      graphics.fillRoundedRect(9, 8, 46, 50, 5);
+      graphics.lineStyle(5, 0x8f5424, 1);
+      graphics.strokeRoundedRect(9, 8, 46, 50, 5);
+      graphics.fillStyle(0xffd66f, 1);
+      graphics.fillRect(17, 17, 30, 32);
+      graphics.generateTexture('lantern', 64, 64);
+      graphics.destroy();
+    }
+
+    if (!this.textures.exists('treasure-chest')) {
+      const graphics = this.make.graphics({ add: false });
+      graphics.fillStyle(0x4b2515, 1);
+      graphics.fillRoundedRect(4, 13, 56, 45, 8);
+      graphics.lineStyle(5, 0xe3a53f, 1);
+      graphics.strokeRoundedRect(4, 13, 56, 45, 8);
+      graphics.fillStyle(0xf4c35d, 1);
+      graphics.fillRect(27, 30, 10, 15);
+      graphics.generateTexture('treasure-chest', 64, 64);
+      graphics.destroy();
     }
   }
 
@@ -537,6 +585,11 @@ class GameScene extends Phaser.Scene {
       .setDisplaySize(52, 52)
       .setDepth(199)
       .setVisible(false);
+    this.damageFlash = this.add.rectangle(0, 0, WIDTH, HEIGHT, 0xc91f2c, .18)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(240)
+      .setAlpha(0);
   }
 
   createGeneratedTextures() {
@@ -790,6 +843,10 @@ class GameScene extends Phaser.Scene {
   updateEnemiesAndPickups(deltaSeconds) {
     this.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
+      if (enemy.getData('attacking') || enemy.getData('casting')) {
+        enemy.setVelocity(0, 0);
+        return;
+      }
       const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
       const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
       if (enemy.kind === 'ranged') {
@@ -801,7 +858,7 @@ class GameScene extends Phaser.Scene {
           const strafe = Math.sin(this.time.now * .0015 + enemy.x) > 0 ? 1 : -1;
           this.physics.velocityFromRotation(angle + strafe * Math.PI / 2, enemy.speed * .45, enemy.body.velocity);
         }
-        if (distance < 440 && this.time.now >= enemy.nextAttackAt) this.fireEnemyProjectile(enemy, angle);
+        if (distance < 440 && this.time.now >= enemy.nextAttackAt) this.fireEnemyProjectile(enemy);
       } else {
         this.physics.velocityFromRotation(angle, enemy.speed, enemy.body.velocity);
       }
@@ -824,7 +881,24 @@ class GameScene extends Phaser.Scene {
       if (projectile.active && this.time.now - projectile.getData('bornAt') > 1600) projectile.destroy();
     });
     this.enemyProjectiles.getChildren().forEach(projectile => {
-      if (projectile.active && this.time.now - projectile.getData('bornAt') > 4600) projectile.destroy();
+      if (!projectile.active) return;
+      if (this.time.now - projectile.getData('bornAt') > 4600) {
+        projectile.destroy();
+        return;
+      }
+      projectile.setAngle(projectile.angle + 9);
+      if (this.time.now - (projectile.getData('lastTrailAt') || 0) > 65) {
+        projectile.setData('lastTrailAt', this.time.now);
+        const trail = this.add.circle(projectile.x, projectile.y, 5, 0xd8a8ff, .62).setDepth(23);
+        this.tweens.add({
+          targets: trail,
+          alpha: 0,
+          scaleX: .2,
+          scaleY: .2,
+          duration: 260,
+          onComplete: () => trail.destroy()
+        });
+      }
     });
 
     if (this.stats.regen > 0) {
@@ -864,15 +938,53 @@ class GameScene extends Phaser.Scene {
     if (elite) enemy.setTint(0xf0a33a);
   }
 
-  fireEnemyProjectile(enemy, angle) {
-    if (!enemy?.active || this.state !== 'running') return;
+  fireEnemyProjectile(enemy) {
+    if (!enemy?.active || this.state !== 'running' || enemy.getData('casting')) return;
     enemy.nextAttackAt = this.time.now + Phaser.Math.Between(2600, 3800);
-    const projectile = this.enemyProjectiles.create(enemy.x, enemy.y, 'enemy-projectile')
-      .setDisplaySize(14, 14)
-      .setDepth(24);
-    projectile.damage = enemy.damage;
-    projectile.setData('bornAt', this.time.now);
-    this.physics.velocityFromRotation(angle, enemy.elite ? 124 : 108, projectile.body.velocity);
+    enemy.setData('casting', true);
+    enemy.setTint(0xe9b0ff);
+
+    const warning = this.add.graphics().setDepth(22);
+    warning.lineStyle(3, 0xe5a8ff, .72);
+    warning.lineBetween(enemy.x, enemy.y, this.player.x, this.player.y);
+    warning.fillStyle(0xb94ee8, .28);
+    warning.fillCircle(enemy.x, enemy.y, 31);
+    warning.lineStyle(3, 0xf3d3ff, .9);
+    warning.strokeCircle(enemy.x, enemy.y, 28);
+    this.tweens.add({
+      targets: warning,
+      alpha: .25,
+      yoyo: true,
+      repeat: 2,
+      duration: 145
+    });
+
+    this.time.delayedCall(520, () => {
+      warning.destroy();
+      if (!enemy.active) return;
+      enemy.setData('casting', false);
+      enemy.clearTint();
+      if (this.state !== 'running' || !this.player?.active) return;
+
+      const fireAngle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
+      const projectile = this.enemyProjectiles.create(enemy.x, enemy.y, 'enemy-projectile')
+        .setDisplaySize(18, 18)
+        .setDepth(24);
+      projectile.damage = enemy.damage;
+      projectile.setData('bornAt', this.time.now);
+      projectile.setData('lastTrailAt', this.time.now);
+      this.physics.velocityFromRotation(fireAngle, enemy.elite ? 124 : 108, projectile.body.velocity);
+
+      const muzzle = this.add.circle(enemy.x, enemy.y, 12, 0xf2c7ff, .9).setDepth(25);
+      this.tweens.add({
+        targets: muzzle,
+        alpha: 0,
+        scaleX: 2.8,
+        scaleY: 2.8,
+        duration: 260,
+        onComplete: () => muzzle.destroy()
+      });
+    });
   }
 
   autoAttack() {
@@ -1053,15 +1165,72 @@ class GameScene extends Phaser.Scene {
 
   onPlayerHit(player, enemy) {
     if (!enemy?.active || this.state !== 'running') return;
-    if (this.time.now < (enemy.nextContactAt || 0)) return;
-    enemy.nextContactAt = this.time.now + 1350;
-    this.takePlayerDamage(enemy.damage, enemy.x, enemy.y);
+    if (this.time.now < (enemy.nextContactAt || 0) || enemy.getData('attacking')) return;
+    enemy.nextContactAt = this.time.now + 1650;
+    enemy.setData('attacking', true);
+    enemy.setVelocity(0, 0);
+    enemy.setTint(0xffc55c);
+
+    const warning = this.add.circle(enemy.x, enemy.y, 34, 0xff3f2f, .14)
+      .setStrokeStyle(4, 0xffc55c, .92)
+      .setDepth(19);
+    this.tweens.add({
+      targets: warning,
+      scaleX: .62,
+      scaleY: .62,
+      alpha: .9,
+      duration: 420
+    });
+
+    this.time.delayedCall(430, () => {
+      warning.destroy();
+      if (!enemy.active) return;
+      enemy.setData('attacking', false);
+      enemy.clearTint();
+      if (this.state !== 'running' || !this.player?.active) return;
+      const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
+      if (distance > 102) return;
+      this.createMeleeSlash(enemy.x, enemy.y, this.player.x, this.player.y);
+      this.takePlayerDamage(enemy.damage, enemy.x, enemy.y);
+    });
+  }
+
+  createMeleeSlash(sourceX, sourceY, targetX, targetY) {
+    const angle = Phaser.Math.Angle.Between(sourceX, sourceY, targetX, targetY);
+    const impactX = targetX - Math.cos(angle) * 18;
+    const impactY = targetY - Math.sin(angle) * 18;
+    const slash = this.add.graphics().setDepth(36);
+    slash.lineStyle(7, 0xffe29a, 1);
+    slash.beginPath();
+    slash.arc(impactX, impactY, 28, angle - .9, angle + .9, false);
+    slash.strokePath();
+    slash.lineStyle(3, 0xff5d45, .9);
+    slash.lineBetween(sourceX, sourceY, targetX, targetY);
+    this.tweens.add({
+      targets: slash,
+      alpha: 0,
+      scaleX: 1.35,
+      scaleY: 1.35,
+      duration: 230,
+      onComplete: () => slash.destroy()
+    });
   }
 
   onEnemyProjectileHit(player, projectile) {
     if (!projectile?.active || this.state !== 'running') return;
     const { x, y, damage } = projectile;
     projectile.destroy();
+    const impact = this.add.circle(x, y, 13, 0xe7b4ff, .95)
+      .setStrokeStyle(4, 0x9b38cf, 1)
+      .setDepth(38);
+    this.tweens.add({
+      targets: impact,
+      alpha: 0,
+      scaleX: 2.4,
+      scaleY: 2.4,
+      duration: 280,
+      onComplete: () => impact.destroy()
+    });
     this.takePlayerDamage(damage, x, y);
   }
 
@@ -1071,12 +1240,35 @@ class GameScene extends Phaser.Scene {
     const damage = Math.max(1, rawDamage - this.stats.armor);
     this.stats.hp -= damage;
     this.cameras.main.shake(70, .0045);
+    this.tweens.killTweensOf(this.damageFlash);
+    this.damageFlash.setAlpha(.26);
+    this.tweens.add({
+      targets: this.damageFlash,
+      alpha: 0,
+      duration: 260
+    });
     this.player.setTintFill(0xff5c5c);
     this.time.delayedCall(100, () => {
       if (this.player.active) this.player.clearTint();
     });
     const angle = Phaser.Math.Angle.Between(sourceX, sourceY, this.player.x, this.player.y);
     this.player.setVelocity(Math.cos(angle) * 190, Math.sin(angle) * 190);
+    const damageText = this.add.text(this.player.x, this.player.y - 40, `-${Math.ceil(damage)}`, {
+      fontFamily: '"Malgun Gothic", sans-serif',
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: '#fff2d3',
+      stroke: '#8d1420',
+      strokeThickness: 5
+    }).setOrigin(.5).setDepth(45);
+    this.tweens.add({
+      targets: damageText,
+      y: damageText.y - 34,
+      alpha: 0,
+      duration: 680,
+      ease: 'Cubic.easeOut',
+      onComplete: () => damageText.destroy()
+    });
     audio.hit();
     if (this.stats.hp <= 0) this.gameOver();
   }
