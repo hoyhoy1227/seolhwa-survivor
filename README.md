@@ -6,6 +6,14 @@
 
 **[설화: 밤의 사냥꾼 실행하기](https://hoyhoy1227.github.io/seolhwa-survivor/)**
 
+다운로드나 GitHub 로그인 없이 최신 Chrome, Edge, Safari 등 웹브라우저에서 실행할 수 있습니다. 타이틀 화면의 **게임 링크 복사** 버튼으로 다른 사람에게 같은 공개 주소를 전달할 수 있습니다.
+
+## 전체 소스 코드와 커밋 기록
+
+- 저장소: **[hoyhoy1227/seolhwa-survivor](https://github.com/hoyhoy1227/seolhwa-survivor)**
+- 게임 실행 코드, UI, 캐릭터·몬스터·배경 스프라이트, 배포 워크플로를 이 저장소에 함께 포함합니다.
+- 기능 수정은 기존 기록을 덮어쓰지 않고 새로운 Git 커밋으로 추가합니다.
+
 ## 주요 특징
 
 - 도깨비, 구미호, 해치, 산신, 처용, 바리데기 중 캐릭터 선택
@@ -47,9 +55,12 @@ python -m http.server 8000
 .
 ├─ index.html
 ├─ src/
-│  └─ game.js
+│  ├─ game.js
+│  └─ sprite-data.js
 ├─ assets/
-│  └─ sprites/
+│  └─ sprites/              # 캐릭터·몬스터·보물·배경 PNG
+├─ scripts/
+│  └─ build-sprite-data.mjs
 └─ .github/
    └─ workflows/
       └─ deploy-pages.yml

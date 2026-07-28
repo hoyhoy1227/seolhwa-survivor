@@ -2,9 +2,10 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260728-4';
+const SPRITE_VERSION = '20260728-5';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
+const PUBLIC_GAME_URL = 'https://hoyhoy1227.github.io/seolhwa-survivor/';
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
@@ -410,6 +411,24 @@ document.getElementById('sound-button').addEventListener('click', event => {
   const muted = audio.toggleMute();
   event.currentTarget.textContent = `소리: ${muted ? '꺼짐' : '켜짐'}`;
   if (!muted) audio.click();
+});
+
+document.getElementById('share-button').addEventListener('click', async () => {
+  audio.click();
+  try {
+    await navigator.clipboard.writeText(PUBLIC_GAME_URL);
+    showToast('공개 게임 링크를 복사했습니다!');
+  } catch {
+    const textArea = document.createElement('textarea');
+    textArea.value = PUBLIC_GAME_URL;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    textArea.remove();
+    showToast('공개 게임 링크를 복사했습니다!');
+  }
 });
 
 document.getElementById('selection-back').addEventListener('click', () => {
