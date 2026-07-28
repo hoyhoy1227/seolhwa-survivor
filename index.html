@@ -148,45 +148,6 @@
       background: rgba(13,14,23,.76);
     }
 
-    .game-button.link-button {
-      display: grid;
-      place-items: center;
-      text-decoration: none;
-    }
-
-    .share-panel {
-      width: min(560px, 88vw);
-      margin: 18px auto 0;
-      padding: 11px 13px;
-      border: 1px solid rgba(240,185,79,.22);
-      background: rgba(0,0,0,.3);
-    }
-
-    .share-panel b {
-      display: block;
-      margin-bottom: 6px;
-      color: #f4d07e;
-      font-size: 11px;
-      letter-spacing: .1em;
-    }
-
-    #public-game-link {
-      display: block;
-      overflow: hidden;
-      color: #a9daf6;
-      font-family: ui-monospace, monospace;
-      font-size: 11px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .source-link {
-      display: inline-block;
-      margin-top: 7px;
-      color: #c8bda8;
-      font-size: 11px;
-    }
-
     .small-note {
       margin: 26px 0 0;
       padding: 10px 12px;
@@ -627,12 +588,6 @@
         <button id="start-button" class="game-button">모험 시작</button>
         <button id="how-button" class="game-button secondary">게임 방법</button>
         <button id="sound-button" class="game-button secondary">소리: 켜짐</button>
-        <button id="share-button" class="game-button secondary">게임 링크 복사</button>
-      </div>
-      <div class="share-panel">
-        <b>누구나 다운로드 없이 플레이</b>
-        <a id="public-game-link" href="https://hoyhoy1227.github.io/seolhwa-survivor/">https://hoyhoy1227.github.io/seolhwa-survivor/</a>
-        <a class="source-link" href="https://github.com/hoyhoy1227/seolhwa-survivor" target="_blank" rel="noopener">전체 소스 코드와 커밋 기록 보기</a>
       </div>
       <p class="small-note">방향키 / WASD 이동 · 자동 공격 · ESC 일시정지 · M 음소거</p>
     </div>
@@ -691,6 +646,6 @@
 
   <script src="./src/sprite-data.js?v=20260728-4"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260728-5"></script>
+  <script src="./src/game.js?v=20260728-6"></script>
 </body>
 </html>
