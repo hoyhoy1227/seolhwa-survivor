@@ -896,8 +896,11 @@ class GameScene extends Phaser.Scene {
   }
 
   clearMapDevices() {
-    (this.mapDeviceTweens || []).forEach(tween => tween?.remove());
-    (this.mapDeviceObjects || []).forEach(object => object?.destroy());
+    (this.mapDeviceObjects || []).forEach(object => {
+      if (!object) return;
+      this.tweens.killTweensOf(object);
+      object.destroy();
+    });
     this.mapDeviceTweens = [];
     this.mapDeviceObjects = [];
     this.mapDevices = [];
