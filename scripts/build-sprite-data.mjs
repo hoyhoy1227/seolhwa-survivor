@@ -25,6 +25,12 @@ const spriteFiles = [
   'boss-sangun.png',
   'boss-yeoksin.png',
   'boss-yeomra.png',
+  'device-brazier.png',
+  'device-mist-stone.png',
+  'device-golden-seal.png',
+  'device-wind-totem.png',
+  'device-moon-drum.png',
+  'device-soul-well.png',
   'ground-forest-v2.png'
 ];
 

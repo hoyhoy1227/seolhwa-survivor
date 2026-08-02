@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260802-3';
+const SPRITE_VERSION = '20260802-4';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
@@ -135,6 +135,12 @@ const EMBEDDED_TEXTURE_FILES = Object.freeze({
   'boss-sangun': 'boss-sangun.png',
   'boss-yeoksin': 'boss-yeoksin.png',
   'boss-yeomra': 'boss-yeomra.png',
+  'device-brazier': 'device-brazier.png',
+  'device-mist-stone': 'device-mist-stone.png',
+  'device-golden-seal': 'device-golden-seal.png',
+  'device-wind-totem': 'device-wind-totem.png',
+  'device-moon-drum': 'device-moon-drum.png',
+  'device-soul-well': 'device-soul-well.png',
   'ground-forest': 'ground-forest-v2.png'
 });
 
@@ -191,6 +197,13 @@ const SKILLS = [
       scene.stats.lightRadius += 35;
       scene.stats.pickupRadius += 28;
     }
+  },
+  {
+    id: 'spirit-pouch',
+    icon: '🧧',
+    title: '정기 복주머니',
+    description: '경험치가 끌려오는 범위가 65 넓어집니다.',
+    apply: scene => { scene.stats.pickupRadius += 65; }
   },
   {
     id: 'bell',
@@ -681,6 +694,12 @@ class GameScene extends Phaser.Scene {
       'enemy-gaksi',
       'enemy-jeoseung',
       ...CAMPAIGN.map(chapter => chapter.bossTexture),
+      'device-brazier',
+      'device-mist-stone',
+      'device-golden-seal',
+      'device-wind-totem',
+      'device-moon-drum',
+      'device-soul-well',
       'ground-forest'
     ];
     this.missingSpriteKeys = required.filter(key => !this.textures.exists(key));
@@ -917,13 +936,17 @@ class GameScene extends Phaser.Scene {
       [[620,690],[1780,690],[1550,1330]]
     ][index];
     const types = ['brazier', 'mist', 'seal', 'windTotem', 'moonDrum', 'soulWell'];
+    const spriteKeys = ['device-brazier', 'device-mist-stone', 'device-golden-seal', 'device-wind-totem', 'device-moon-drum', 'device-soul-well'];
+    const spriteSizes = [118, 126, 132, 124, 126, 128];
     const radii = [112, 132, 158, 150, 128, 122];
     const colors = [0xff7a32, 0xff7ba8, 0xffd55f, 0xa8e4c2, 0x76dce7, 0x84bfff];
     positions.forEach(([x, y], order) => {
       const color = colors[index];
       const radius = radii[index];
       const aura = this.add.circle(x, y, radius, color, index === 1 ? .1 : .055).setStrokeStyle(3, color, .28).setDepth(11);
-      const core = this.add.circle(x, y, 24 + index * 2, color, .6).setStrokeStyle(5, 0xffefc4, .72).setDepth(12);
+      const core = this.add.image(x, y, spriteKeys[index]).setDisplaySize(spriteSizes[index], spriteSizes[index]).setDepth(13);
+      core.setData('baseScaleX', core.scaleX);
+      core.setData('baseScaleY', core.scaleY);
       const sigil = this.add.graphics({ x, y }).setDepth(13);
       sigil.lineStyle(3, color, .82).strokeCircle(0, 0, 40 + index * 3);
       for (let ray = 0; ray < 8; ray += 1) {
@@ -931,20 +954,16 @@ class GameScene extends Phaser.Scene {
         sigil.lineBetween(Math.cos(angle) * 30, Math.sin(angle) * 30, Math.cos(angle) * 48, Math.sin(angle) * 48);
       }
       if (index === 0) {
-        core.setFillStyle(0x6b241e, .95);
         sigil.fillStyle(0xffc04e, .9).fillTriangle(-13, 14, 0, -30, 13, 14).fillTriangle(-20, 16, -8, -13, 0, 18);
       } else if (index === 1) {
         sigil.lineStyle(5, 0xffbfd7, .82).beginPath().arc(0, 3, 28, -.4, Math.PI + .4).strokePath();
-        core.setAlpha(.38);
       } else if (index === 2) {
         sigil.lineStyle(4, 0xffe7a0, .86).lineBetween(-28, 0, 28, 0).lineBetween(0, -28, 0, 28);
       } else if (index === 3) {
         sigil.lineStyle(4, 0xd5f8e4, .82).beginPath().arc(0, 0, 28, -.8, 1.7).strokePath();
       } else if (index === 4) {
-        core.setFillStyle(0x33284f, .95);
         sigil.fillStyle(0xe9d7ff, .65).fillCircle(-10, -5, 6).fillCircle(10, -5, 6);
       } else {
-        core.setFillStyle(0x172845, .95);
         sigil.lineStyle(4, 0xb5e3ff, .8).strokeCircle(0, 0, 18).strokeCircle(0, 0, 31);
       }
       const label = this.add.text(x, y + radius + 10, order === 0 ? chapter.deviceName : '', {
@@ -1099,6 +1118,7 @@ class GameScene extends Phaser.Scene {
       regen: base.regen || 0,
       lightRadius: base.lightRadius || 145,
       pickupRadius: base.pickupRadius || 76,
+      pickupSpeed: 1,
       projectiles: 1,
       projectileSpeed: 1,
       projectileSize: 1,
@@ -1125,6 +1145,9 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
+    this.experienceVacuumActive = false;
+    this.nextPortalNoticeAt = 0;
+    this.lastVacuumAudioAt = 0;
     this.activeBoss = null;
     this.attackSequence = 0;
     this.nextSpawnAt = this.time.now + 1200;
@@ -1252,7 +1275,8 @@ class GameScene extends Phaser.Scene {
     (this.mapDevices || []).forEach(device => {
       if (!device.core?.active) return;
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, device.x, device.y);
-      device.core.setScale(1 + Math.sin(time * .006 + device.order) * .08);
+      const pulse = 1 + Math.sin(time * .006 + device.order) * .045;
+      device.core.setScale(device.core.getData('baseScaleX') * pulse, device.core.getData('baseScaleY') * pulse);
 
       if (device.type === 'mist' && distance <= device.radius) {
         this.player.setVelocity(this.player.body.velocity.x * .72, this.player.body.velocity.y * .72);
@@ -1481,9 +1505,9 @@ class GameScene extends Phaser.Scene {
     this.orbs.getChildren().forEach(orb => {
       if (!orb.active) return;
       const distance = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
-      const age = this.time.now - (orb.getData('spawnedAt') || this.time.now);
-      if (distance <= this.stats.pickupRadius || age > 4200) {
-        this.physics.moveToObject(orb, this.player, 250 + this.stats.pickupRadius);
+      const vacuum = this.experienceVacuumActive || orb.getData('vacuum');
+      if (vacuum || distance <= this.stats.pickupRadius) {
+        this.physics.moveToObject(orb, this.player, vacuum ? 1180 : (250 + this.stats.pickupRadius) * this.stats.pickupSpeed);
       } else {
         orb.setVelocity(0, 0);
       }
@@ -1539,6 +1563,10 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnWave() {
+    if (this.bossDefeated) {
+      this.nextSpawnAt = this.time.now + 1000;
+      return;
+    }
     const progress = Phaser.Math.Clamp(this.elapsed / NIGHT_START, 0, 1);
     const overtime = Phaser.Math.Clamp((this.elapsed - NIGHT_START) / 45, 0, .7);
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
@@ -2300,6 +2328,7 @@ class GameScene extends Phaser.Scene {
     const chapter = CAMPAIGN[this.chapterIndex];
     const x = boss.x;
     const y = boss.y;
+    const bossXp = boss.xpValue || 35;
     boss.getData('shadow')?.destroy();
     boss.destroy();
     this.activeBoss = null;
@@ -2308,24 +2337,53 @@ class GameScene extends Phaser.Scene {
     this.chapterKills += 1;
     ui.bossPanel.classList.add('hidden');
     this.enemyProjectiles.clear(true, true);
+    this.projectiles.clear(true, true);
+    this.chests.clear(true, true);
     this.hazardZones.forEach(zone => {
       zone.visual?.destroy();
       zone.rune?.destroy();
     });
     this.hazardZones = [];
+    this.clearMapDevices();
     this.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
       enemy.getData('shadow')?.destroy();
       enemy.destroy();
     });
+    for (let index = 0; index < 6; index += 1) {
+      const angle = index / 6 * Math.PI * 2;
+      const orb = this.orbs.create(x + Math.cos(angle) * 42, y + Math.sin(angle) * 42, 'xp-orb').setDepth(26);
+      orb.value = bossXp / 6;
+      orb.setData('spawnedAt', this.time.now);
+      orb.setDisplaySize(18, 18).setTint(0xffe88f);
+    }
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
     for (let index = 0; index < 6; index += 1) {
       this.time.delayedCall(index * 90, () => this.createImpactBurst(x + Phaser.Math.Between(-70, 70), y + Phaser.Math.Between(-70, 70), chapter.accent, 42));
     }
     audio.portal();
-    showToast(`${chapter.bossName} 처치! 다음 설화로 향하는 포탈이 열렸습니다.`, 4500);
     this.spawnPortal(x, y);
+    this.vacuumAllExperience();
+    showToast(`${chapter.bossName} 처치! 모든 요괴가 사라졌습니다. 정기를 회수한 뒤 포탈에 들어가세요.`, 5600);
+  }
+
+  vacuumAllExperience() {
+    const orbs = this.orbs.getChildren().filter(orb => orb.active);
+    if (!orbs.length) {
+      this.experienceVacuumActive = false;
+      this.updatePortalGuide();
+      return;
+    }
+    this.experienceVacuumActive = true;
+    orbs.forEach((orb, index) => {
+      orb.setData('vacuum', true);
+      orb.setTint(index % 2 ? 0xfff0a3 : 0xaee7ff);
+      orb.setData('spawnedAt', this.time.now);
+    });
+    this.updatePortalGuide();
+    audio.tone(520, .38, 'sine', .035);
+    audio.tone(780, .42, 'triangle', .025, .12);
   }
 
   spawnPortal(x, y) {
@@ -2334,11 +2392,53 @@ class GameScene extends Phaser.Scene {
     const portal = this.portals.create(portalX, portalY, 'portal').setDisplaySize(86, 86).setDepth(27).setImmovable(true);
     portal.body.setAllowGravity(false);
     portal.setData('chapter', this.chapterIndex);
+    const chapter = CAMPAIGN[this.chapterIndex];
+    const beam = this.add.rectangle(portalX, portalY - 72, 92, 250, chapter.accent, .09).setDepth(201);
+    const arrow = this.add.triangle(portalX, portalY - 76, 0, 0, 24, 0, 12, 18, 0xffef9b, .95).setDepth(203);
+    const label = this.add.text(portalX, portalY - 118, '', {
+      fontFamily: '"Malgun Gothic", sans-serif', fontSize: '18px', fontStyle: 'bold', align: 'center',
+      color: '#fff4c6', stroke: '#21142f', strokeThickness: 6, backgroundColor: 'rgba(8,7,16,.76)', padding: { x: 12, y: 7 }
+    }).setOrigin(.5).setDepth(204);
+    portal.setData('guideBeam', beam);
+    portal.setData('guideArrow', arrow);
+    portal.setData('guideLabel', label);
+    this.tweens.add({ targets: beam, alpha: .2, scaleX: 1.2, yoyo: true, repeat: -1, duration: 860, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: arrow, y: arrow.y + 14, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: label, scaleX: 1.04, scaleY: 1.04, yoyo: true, repeat: -1, duration: 780, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: portal, scaleX: portal.scaleX * 1.16, scaleY: portal.scaleY * 1.16, angle: 360, yoyo: true, repeat: -1, duration: 920, ease: 'Sine.easeInOut' });
+    this.updatePortalGuide();
+  }
+
+  updatePortalGuide() {
+    const collecting = this.experienceVacuumActive || this.orbs?.countActive(true) > 0;
+    this.portals?.getChildren().filter(portal => portal.active).forEach(portal => {
+      const label = portal.getData('guideLabel');
+      if (label?.active) label.setText(collecting ? '전장의 정기 회수 중…' : '다음 설화로 이동\n포탈 안으로 들어가세요');
+      const arrow = portal.getData('guideArrow');
+      if (arrow?.active) arrow.setFillStyle(collecting ? 0xaedfff : 0xffef9b, .95);
+    });
+    this.updateChapterHud();
+  }
+
+  destroyPortalGuide(portal) {
+    ['guideBeam', 'guideArrow', 'guideLabel'].forEach(key => {
+      const object = portal?.getData(key);
+      if (!object) return;
+      this.tweens.killTweensOf(object);
+      object.destroy();
+    });
   }
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
+    if (this.experienceVacuumActive || this.orbs.countActive(true) > 0) {
+      if (this.time.now >= this.nextPortalNoticeAt) {
+        this.nextPortalNoticeAt = this.time.now + 1600;
+        showToast('전장의 경험치를 회수하고 있습니다. 모두 모이면 포탈에 들어갈 수 있습니다.', 1500);
+      }
+      return;
+    }
+    this.destroyPortalGuide(portal);
     portal.destroy();
     if (this.chapterIndex >= CAMPAIGN.length - 1) {
       this.completeCampaign();
@@ -2351,6 +2451,7 @@ class GameScene extends Phaser.Scene {
     this.chapterKills = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
+    this.experienceVacuumActive = false;
     this.activeBoss = null;
     this.nextChestAt = 20;
     this.nextSpawnAt = this.time.now + 1600;
@@ -2389,9 +2490,20 @@ class GameScene extends Phaser.Scene {
 
   collectOrb(player, orb) {
     if (!orb?.active) return;
+    const vacuuming = this.experienceVacuumActive || orb.getData('vacuum');
     this.xp += orb.value || 1;
     orb.destroy();
-    audio.collect();
+    if (!vacuuming || this.time.now - this.lastVacuumAudioAt >= 90) {
+      audio.collect();
+      this.lastVacuumAudioAt = this.time.now;
+    }
+
+    const vacuumComplete = vacuuming && this.orbs.countActive(true) === 0;
+    if (vacuumComplete) {
+      this.experienceVacuumActive = false;
+      this.updatePortalGuide();
+      showToast('전장의 모든 경험치를 회수했습니다. 포탈 안으로 들어가세요!', 3200);
+    }
 
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
@@ -2717,7 +2829,9 @@ class GameScene extends Phaser.Scene {
   updateChapterHud() {
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
     ui.chapterLabel.textContent = `설화 ${this.chapterIndex + 1} / ${CAMPAIGN.length}`;
-    ui.chapterName.textContent = `${chapter.name} · ${chapter.bossName}`;
+    ui.chapterName.textContent = this.bossDefeated
+      ? `${chapter.name} · 포탈 안으로 들어가세요`
+      : `${chapter.name} · ${chapter.bossName}`;
   }
 
   getTreasureDirection(chest) {
