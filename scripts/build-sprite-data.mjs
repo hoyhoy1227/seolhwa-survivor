@@ -19,6 +19,12 @@ const spriteFiles = [
   'enemy-dokkaebi.png',
   'enemy-gaksi.png',
   'enemy-jeoseung.png',
+  'boss-dokkaebi.png',
+  'boss-gumiho.png',
+  'boss-bulgasari.png',
+  'boss-sangun.png',
+  'boss-yeoksin.png',
+  'boss-yeomra.png',
   'ground-forest-v2.png'
 ];
 

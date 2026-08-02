@@ -261,6 +261,41 @@
     #hp-fill { background: linear-gradient(90deg, #9e2b2b, #e35945); }
     #xp-fill { background: linear-gradient(90deg, #3474c6, #71d9ff); box-shadow: 0 0 9px rgba(78,183,255,.62); }
 
+    #chapter-panel {
+      position: absolute;
+      top: max(12px, env(safe-area-inset-top));
+      left: 50%;
+      width: min(250px, 30vw);
+      padding: 8px 12px;
+      border: 1px solid rgba(240,185,79,.38);
+      border-radius: 5px;
+      background: rgba(4,5,10,.9);
+      box-shadow: 0 8px 26px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.06);
+      text-align: center;
+      transform: translateX(-50%);
+    }
+
+    #chapter-label { color: #d7b660; font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+    #chapter-name { display: block; margin-top: 3px; color: #fff1cb; font-size: 13px; }
+
+    #boss-panel {
+      position: absolute;
+      top: 78px;
+      left: 50%;
+      width: min(430px, 54vw);
+      padding: 7px 10px;
+      border: 1px solid rgba(239,78,66,.64);
+      border-radius: 4px;
+      background: rgba(20,2,7,.88);
+      box-shadow: 0 0 25px rgba(207,35,44,.3);
+      text-align: center;
+      transform: translateX(-50%);
+    }
+
+    #boss-name { display: block; margin-bottom: 5px; color: #ffd6a2; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+    .boss-bar { height: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.28); background: #170910; }
+    #boss-fill { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, #741626, #ef4f42, #ffbe5b); transition: width .12s; }
+
     .time-card {
       min-width: 190px;
       padding: 9px 11px;
@@ -399,6 +434,7 @@
 
     .legend-player { background: #fff4bd; box-shadow: 0 0 5px #ffcd53; }
     .legend-treasure { background: #f3a72f; border-radius: 1px; transform: rotate(45deg); }
+    .legend-portal { border: 2px solid #a8d8ff; background: #7258d9; box-shadow: 0 0 5px #7ea9ff; }
 
     #pause-button {
       position: absolute;
@@ -530,6 +566,8 @@
       .sun-clock-dial::after { left: 17px; }
       #sun-clock-hand { left: 17px; bottom: 17px; height: 14px; }
       #run-stats { display: none; }
+      #chapter-panel { top: 100px; width: 180px; }
+      #boss-panel { top: 145px; width: 240px; }
       #minimap-panel { width: 148px; padding: 6px; }
       #minimap { width: 134px; height: 85px; }
       #treasure-hint { max-width: 92px; }
@@ -567,12 +605,15 @@
           <div id="run-stats">처치 0 · 공격력 0</div>
         </div>
       </div>
+      <div id="chapter-panel"><span id="chapter-label">설화 1 / 6</span><strong id="chapter-name">도깨비 장터</strong></div>
+      <div id="boss-panel" class="hidden"><strong id="boss-name">보스</strong><div class="boss-bar"><i id="boss-fill"></i></div></div>
       <div id="minimap-panel">
         <div class="minimap-title"><span>전장 지도</span><span id="treasure-hint">보물 없음</span></div>
         <canvas id="minimap" width="384" height="244" aria-label="플레이어와 보물 위치 지도"></canvas>
         <div class="minimap-legend">
           <span><i class="legend-dot legend-player"></i>나</span>
           <span><i class="legend-dot legend-treasure"></i>보물</span>
+          <span><i class="legend-dot legend-portal"></i>포탈</span>
         </div>
       </div>
       <button id="pause-button" aria-label="일시정지">Ⅱ</button>
@@ -597,12 +638,12 @@
     <div class="modal-panel how-panel">
       <p class="eyebrow">HOW TO SURVIVE</p>
       <h2 class="section-heading">설화를 지키는 법</h2>
-      <p class="section-copy">넓은 전장을 누비며 요괴 무리를 피하고, 자동 공격으로 힘을 키우세요.</p>
+      <p class="section-copy">여섯 설화가 무너지기 전에 낮 동안 힘을 모으고, 밤의 보스를 쓰러뜨려 다음 세계로 나아가세요.</p>
       <div class="control-grid">
         <div class="control-card"><b>이동</b><span>방향키 또는 WASD를 사용합니다. 화면을 누르고 있어도 해당 방향으로 움직입니다.</span></div>
-        <div class="control-card"><b>공격</b><span>가장 가까운 적을 자동으로 공격합니다. 근거리 요괴 무리와 거리를 유지하세요.</span></div>
-        <div class="control-card"><b>성장</b><span>푸른 경험치 구슬을 모아 레벨업하고, 세 가지 설화 능력 중 하나를 선택합니다.</span></div>
-        <div class="control-card"><b>보물과 밤</b><span>보물상자에서 희귀 능력을 얻습니다. 밤에는 호롱불 주변만 안전하게 볼 수 있습니다.</span></div>
+        <div class="control-card"><b>공격</b><span>영웅마다 철퇴, 여우불, 수호 파동, 화살, 춤칼, 영혼꽃 등 서로 다른 자동 공격을 사용합니다.</span></div>
+        <div class="control-card"><b>성장</b><span>경험치와 보물로 능력을 강화하고, 회전 부적·낙뢰·연꽃 진 같은 새 공격 방식을 얻습니다.</span></div>
+        <div class="control-card"><b>보스와 포탈</b><span>밤이 되면 해당 설화의 보스가 출현합니다. 처치 후 열린 포탈로 들어가면 다음 설화가 시작됩니다.</span></div>
       </div>
       <div class="menu-actions">
         <button id="how-back" class="game-button">확인</button>
@@ -644,8 +685,8 @@
     </div>
   </section>
 
-  <script src="./src/sprite-data.js?v=20260728-4"></script>
+  <script src="./src/sprite-data.js?v=20260802-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260728-6"></script>
+  <script src="./src/game.js?v=20260802-1"></script>
 </body>
 </html>
