@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260802-1';
+const SPRITE_VERSION = '20260802-2';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
@@ -72,42 +72,48 @@ const CAMPAIGN = [
     bossName: '도깨비 대왕', bossTexture: 'boss-dokkaebi', bossPattern: 'smash',
     enemyNames: ['도깨비 장사꾼', '각시 장난귀', '불씨 저승사자'],
     ground: 0x7f6949, path: 0xd0a568, accent: 0xff7a32, map: '#59472f',
-    rangedChance: .12, hpScale: 1, speedScale: 1, damageScale: 1, hazard: 'embers'
+    rangedChance: .12, hpScale: 1, speedScale: 1, damageScale: 1, spawnScale: 1, bossHpScale: 1,
+    hazard: 'embers', deviceName: '장터 불화로', deviceHint: '주기적으로 폭발해 주변의 모두를 태웁니다.'
   },
   {
     id: 'fox-pass', name: '여우고개', story: '아홉 꼬리의 환영이 달빛 고개를 뒤덮었습니다.',
     bossName: '천년 구미호', bossTexture: 'boss-gumiho', bossPattern: 'foxfire',
     enemyNames: ['홀린 나그네', '여우 그림자', '환영 무당'],
     ground: 0x624c6a, path: 0xb8899e, accent: 0xff6575, map: '#49364f',
-    rangedChance: .28, hpScale: 1.12, speedScale: 1.08, damageScale: 1.05, hazard: 'illusions'
+    rangedChance: .28, hpScale: 1.12, speedScale: 1.08, damageScale: 1.05, spawnScale: .88, bossHpScale: 1.25,
+    hazard: 'illusions', deviceName: '여우 안개석', deviceHint: '안개 안에서는 이동이 느려지고 환영이 몰려옵니다.'
   },
   {
     id: 'golden-gate', name: '해치의 금문', story: '정의를 지키던 금문이 쇠를 먹는 괴수에게 무너지고 있습니다.',
     bossName: '불가살이', bossTexture: 'boss-bulgasari', bossPattern: 'charge',
     enemyNames: ['철갑 요괴', '금문 수문귀', '쇳조각 술사'],
     ground: 0x75623d, path: 0xd7bb6b, accent: 0xffca55, map: '#514728',
-    rangedChance: .16, hpScale: 1.34, speedScale: .94, damageScale: 1.15, hazard: 'shards'
+    rangedChance: .16, hpScale: 1.34, speedScale: .94, damageScale: 1.15, spawnScale: .77, bossHpScale: 1.55,
+    hazard: 'shards', deviceName: '금문 수호진', deviceHint: '충전된 수호진이 주변 요괴를 밀어냅니다.'
   },
   {
     id: 'tiger-peak', name: '산군 봉우리', story: '뒤틀린 산바람이 봉우리의 수호령들을 사납게 만들었습니다.',
     bossName: '산군', bossTexture: 'boss-sangun', bossPattern: 'pounce',
     enemyNames: ['산짐승 귀', '바람 각시', '절벽 사냥꾼'],
     ground: 0x52634a, path: 0xa39467, accent: 0x9bd56b, map: '#33462f',
-    rangedChance: .2, hpScale: 1.3, speedScale: 1.24, damageScale: 1.12, hazard: 'wind'
+    rangedChance: .2, hpScale: 1.3, speedScale: 1.24, damageScale: 1.12, spawnScale: .67, bossHpScale: 1.9,
+    hazard: 'wind', deviceName: '산바람 돌탑', deviceHint: '돌탑의 바람길이 이동 방향을 강하게 밀어냅니다.'
   },
   {
     id: 'moon-palace', name: '처용의 달궁', story: '달궁에 역병의 춤이 번져 그림자들이 가면을 빼앗았습니다.',
     bossName: '역신', bossTexture: 'boss-yeoksin', bossPattern: 'plague',
     enemyNames: ['역병 탈귀', '저주받은 무희', '부적 술사'],
     ground: 0x4f4660, path: 0x897596, accent: 0x67d7e4, map: '#352d45',
-    rangedChance: .34, hpScale: 1.45, speedScale: 1.12, damageScale: 1.24, hazard: 'plague'
+    rangedChance: .34, hpScale: 1.45, speedScale: 1.12, damageScale: 1.24, spawnScale: .58, bossHpScale: 2.3,
+    hazard: 'plague', deviceName: '처용 정화 북', deviceHint: '북의 결계 안에서는 피해가 줄고 역병이 정화됩니다.'
   },
   {
     id: 'underworld-road', name: '바리의 저승꽃길', story: '저승꽃길의 문이 닫히며 떠도는 혼들이 길을 잃었습니다.',
     bossName: '염라대왕', bossTexture: 'boss-yeomra', bossPattern: 'judgment',
     enemyNames: ['길 잃은 혼', '저승 옥졸', '명부 술사'],
     ground: 0x30374d, path: 0x6e6688, accent: 0x78b9ff, map: '#20273c',
-    rangedChance: .4, hpScale: 1.62, speedScale: 1.16, damageScale: 1.36, hazard: 'rifts'
+    rangedChance: .4, hpScale: 1.62, speedScale: 1.16, damageScale: 1.36, spawnScale: .5, bossHpScale: 2.75,
+    hazard: 'rifts', deviceName: '저승 영혼샘', deviceHint: '생명력을 회복하지만 정예 옥졸도 끌어들입니다.'
   }
 ];
 
@@ -696,18 +702,24 @@ class GameScene extends Phaser.Scene {
       .setDepth(-30);
 
     this.terrain = this.add.graphics().setDepth(-28);
+    this.pathDetails = this.add.graphics().setDepth(-27);
     this.landmarks = this.add.graphics().setDepth(-24);
+    this.scenery = this.add.graphics().setDepth(-22);
     this.applyChapterTheme(0);
 
     this.sun = this.add.circle(WIDTH - 90, 92, 30, 0xffefab)
       .setDepth(-5)
       .setScrollFactor(0)
-      .setVisible(false);
+      .setVisible(true);
     this.moon = this.add.circle(92, 92, 25, 0xdce8f3)
       .setDepth(-5)
       .setScrollFactor(0)
       .setAlpha(0)
-      .setVisible(false);
+      .setVisible(true);
+
+    this.daylight = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0xfff0c7, .24)
+      .setOrigin(0)
+      .setDepth(-6);
 
     this.darkness = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x02030a, 1)
       .setOrigin(0)
@@ -733,12 +745,23 @@ class GameScene extends Phaser.Scene {
     this.groundBase.setFillStyle(chapter.ground, 1);
     this.ground.setTint(chapter.ground);
     this.terrain.clear();
-    this.terrain.fillStyle(chapter.path, .32);
-    this.terrain.fillRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
-    this.terrain.fillRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
-    this.terrain.lineStyle(3, chapter.accent, .2);
-    this.terrain.strokeRoundedRect(0, WORLD_HEIGHT / 2 - 68, WORLD_WIDTH, 136, 48);
-    this.terrain.strokeRoundedRect(WORLD_WIDTH / 2 - 72, 0, 144, WORLD_HEIGHT, 48);
+    this.terrain.fillStyle(chapter.path, .4);
+    this.terrain.fillRoundedRect(0, WORLD_HEIGHT / 2 - 74, WORLD_WIDTH, 148, 48);
+    this.terrain.fillRoundedRect(WORLD_WIDTH / 2 - 78, 0, 156, WORLD_HEIGHT, 48);
+    this.terrain.fillRoundedRect(180, 350, 780, 82, 32);
+    this.terrain.fillRoundedRect(1450, 1360, 760, 78, 32);
+    this.terrain.lineStyle(4, chapter.accent, .25);
+    this.terrain.strokeRoundedRect(0, WORLD_HEIGHT / 2 - 74, WORLD_WIDTH, 148, 48);
+    this.terrain.strokeRoundedRect(WORLD_WIDTH / 2 - 78, 0, 156, WORLD_HEIGHT, 48);
+
+    this.pathDetails.clear();
+    this.pathDetails.lineStyle(2, chapter.accent, .18);
+    for (let x = 28; x < WORLD_WIDTH; x += 62) {
+      this.pathDetails.strokeCircle(x, WORLD_HEIGHT / 2 + ((x / 62) % 3 - 1) * 23, 9 + (x % 4));
+    }
+    for (let y = 30; y < WORLD_HEIGHT; y += 58) {
+      this.pathDetails.strokeRoundedRect(WORLD_WIDTH / 2 - 20 + ((y / 58) % 3 - 1) * 19, y, 28, 12, 5);
+    }
 
     this.landmarks.clear();
     const places = [[230,250],[2140,310],[300,1480],[2050,1430],[720,620],[1690,1180],[520,1210],[1880,620]];
@@ -769,6 +792,166 @@ class GameScene extends Phaser.Scene {
         }
       }
       if (marker % 2 === 0) this.landmarks.fillStyle(chapter.accent, .55).fillCircle(x, y, 4);
+    });
+    this.drawChapterScenery(index, chapter);
+    this.buildMapDevices(index, chapter);
+  }
+
+  drawChapterScenery(index, chapter) {
+    const graphics = this.scenery;
+    graphics.clear();
+    const detailColor = Phaser.Display.Color.ValueToColor(chapter.accent).darken(26).color;
+    for (let marker = 0; marker < 96; marker += 1) {
+      const x = 44 + (marker * 197 + index * 83) % (WORLD_WIDTH - 88);
+      const y = 36 + (marker * 113 + index * 157) % (WORLD_HEIGHT - 72);
+      const size = 2 + marker % 4;
+      graphics.fillStyle(marker % 3 ? detailColor : chapter.accent, .2 + marker % 4 * .04).fillCircle(x, y, size);
+      if (marker % 7 === 0) graphics.lineStyle(2, chapter.accent, .18).lineBetween(x - 9, y + 5, x + 10, y - 6);
+    }
+
+    if (index === 0) {
+      // 장터의 포목 좌판, 깃발, 돌등과 불씨 자국
+      [[420,330],[770,1450],[1740,350],[2020,1280]].forEach(([x, y], stall) => {
+        graphics.fillStyle(0x4b2520, .95).fillRoundedRect(x - 52, y - 24, 104, 58, 9);
+        graphics.fillStyle(stall % 2 ? 0x315f6c : 0xa94132, .92).fillTriangle(x - 60, y - 22, x, y - 70, x + 60, y - 22);
+        graphics.lineStyle(4, 0xe3b76b, .85).lineBetween(x - 42, y + 30, x - 42, y + 58).lineBetween(x + 42, y + 30, x + 42, y + 58);
+        for (let flag = 0; flag < 5; flag += 1) graphics.fillStyle(flag % 2 ? 0xffc15e : 0xe85a42, .85).fillTriangle(x - 48 + flag * 24, y - 48, x - 37 + flag * 24, y - 32, x - 25 + flag * 24, y - 48);
+      });
+      for (let stone = 0; stone < 22; stone += 1) {
+        const x = 110 + stone * 103;
+        graphics.fillStyle(0x4c3023, .4).fillRoundedRect(x, 845 + (stone % 2) * 48, 42, 24, 8);
+      }
+    } else if (index === 1) {
+      // 여우 발자국, 달문과 층층이 번지는 환영 연못
+      [[380,440],[1980,520],[510,1370],[1890,1390]].forEach(([x, y]) => {
+        graphics.lineStyle(7, 0xf4c6dc, .55).strokeCircle(x, y, 58);
+        graphics.lineStyle(3, chapter.accent, .7).strokeCircle(x, y, 44);
+        graphics.fillStyle(0x2b2034, .8).fillRect(x - 62, y + 52, 124, 14);
+      });
+      for (let paw = 0; paw < 28; paw += 1) {
+        const x = 180 + paw * 74;
+        const y = 820 + Math.sin(paw * .7) * 165;
+        graphics.fillStyle(0xffb1ce, .35).fillCircle(x, y, 7).fillCircle(x - 7, y - 9, 3).fillCircle(x + 1, y - 12, 3).fillCircle(x + 8, y - 7, 3);
+      }
+    } else if (index === 2) {
+      // 금문 성벽, 금속 광맥, 해치 인장이 새겨진 석판
+      for (let block = 0; block < 18; block += 1) {
+        const x = 70 + block * 132;
+        graphics.fillStyle(0x3d3428, .7).fillRect(x, block % 2 ? 190 : 1530, 104, 48);
+        graphics.lineStyle(3, 0xc9a844, .6).strokeRect(x, block % 2 ? 190 : 1530, 104, 48);
+      }
+      [[420,530],[1980,510],[430,1290],[1980,1270]].forEach(([x, y]) => {
+        graphics.fillStyle(0x54472f, .9).fillRoundedRect(x - 54, y - 46, 108, 92, 10);
+        graphics.lineStyle(5, 0xffd66f, .72).strokeCircle(x, y, 30);
+        graphics.lineStyle(3, 0xffe7a0, .6).lineBetween(x - 26, y, x + 26, y).lineBetween(x, y - 26, x, y + 26);
+      });
+      for (let vein = 0; vein < 16; vein += 1) {
+        const x = 150 + vein * 142;
+        const y = 520 + (vein * 271) % 770;
+        graphics.lineStyle(4, vein % 2 ? 0xe4bd55 : 0x95a4a9, .42).lineBetween(x - 25, y + 18, x, y - 14).lineBetween(x, y - 14, x + 31, y + 7);
+      }
+    } else if (index === 3) {
+      // 겹봉우리, 소나무 숲, 금줄이 둘러진 산신 돌탑
+      for (let peak = 0; peak < 14; peak += 1) {
+        const x = 80 + peak * 178;
+        const y = peak % 2 ? 260 : 1510;
+        graphics.fillStyle(0x294537, .72).fillTriangle(x - 82, y + 56, x, y - 76, x + 82, y + 56);
+        graphics.lineStyle(3, 0xa7d58e, .32).lineBetween(x - 32, y - 25, x, y - 76).lineBetween(x, y - 76, x + 24, y - 36);
+      }
+      [[350,520],[2050,480],[420,1320],[1980,1330]].forEach(([x, y]) => {
+        for (let tier = 0; tier < 4; tier += 1) graphics.fillStyle(0x40564b, .95).fillRoundedRect(x - 34 + tier * 7, y + 25 - tier * 19, 68 - tier * 14, 18, 5);
+        graphics.lineStyle(4, 0xe6cf86, .65).strokeCircle(x, y - 45, 38);
+      });
+    } else if (index === 4) {
+      // 달궁 기와, 처용 가면, 북과 춤선이 이어지는 궁정
+      for (let tile = 0; tile < 24; tile += 1) {
+        const x = 60 + tile * 98;
+        graphics.fillStyle(tile % 2 ? 0x302642 : 0x443252, .72).fillRoundedRect(x, tile % 3 ? 220 : 1500, 76, 32, 12);
+        graphics.lineStyle(2, 0x8bbbc8, .38).strokeRoundedRect(x, tile % 3 ? 220 : 1500, 76, 32, 12);
+      }
+      [[360,470],[2030,470],[390,1340],[2010,1340]].forEach(([x, y]) => {
+        graphics.fillStyle(0x21182e, .88).fillCircle(x, y, 54);
+        graphics.lineStyle(5, 0x77dbe6, .58).strokeCircle(x, y, 54);
+        graphics.fillStyle(0xe1c1ef, .72).fillCircle(x - 17, y - 10, 9).fillCircle(x + 17, y - 10, 9);
+        graphics.lineStyle(5, 0xb97aca, .7).beginPath().arc(x, y + 5, 27, .2, Math.PI - .2).strokePath();
+      });
+    } else {
+      // 삼도천 돌길, 명부 석등, 피어나는 저승꽃 무리
+      graphics.lineStyle(26, 0x263b58, .5).beginPath().moveTo(0, 420).lineTo(420, 510).lineTo(820, 420).lineTo(1240, 520).lineTo(1700, 420).lineTo(WORLD_WIDTH, 510).strokePath();
+      graphics.lineStyle(4, 0x89c5ff, .3).beginPath().moveTo(0, 420).lineTo(420, 510).lineTo(820, 420).lineTo(1240, 520).lineTo(1700, 420).lineTo(WORLD_WIDTH, 510).strokePath();
+      [[330,700],[2070,690],[430,1360],[1940,1370]].forEach(([x, y]) => {
+        graphics.fillStyle(0x171e31, .92).fillRoundedRect(x - 32, y - 42, 64, 84, 12);
+        graphics.lineStyle(4, 0x79b8ee, .65).strokeRect(x - 22, y - 30, 44, 42);
+        graphics.fillStyle(0xb7e1ff, .55).fillCircle(x, y - 10, 13);
+      });
+      for (let flower = 0; flower < 34; flower += 1) {
+        const x = 90 + (flower * 211) % 2200;
+        const y = 620 + (flower * 139) % 980;
+        for (let petal = 0; petal < 5; petal += 1) {
+          const angle = petal / 5 * Math.PI * 2;
+          graphics.fillStyle(0x7cbaff, .36).fillCircle(x + Math.cos(angle) * 8, y + Math.sin(angle) * 8, 5);
+        }
+      }
+    }
+  }
+
+  clearMapDevices() {
+    (this.mapDeviceTweens || []).forEach(tween => tween?.remove());
+    (this.mapDeviceObjects || []).forEach(object => object?.destroy());
+    this.mapDeviceTweens = [];
+    this.mapDeviceObjects = [];
+    this.mapDevices = [];
+  }
+
+  buildMapDevices(index, chapter) {
+    this.clearMapDevices();
+    const positions = [
+      [[820,650],[1580,1150],[520,1230]],
+      [[640,650],[1780,640],[1670,1320]],
+      [[740,610],[1660,610],[1200,1320]],
+      [[650,670],[1760,720],[1530,1320]],
+      [[690,650],[1710,650],[1200,1370]],
+      [[620,690],[1780,690],[1550,1330]]
+    ][index];
+    const types = ['brazier', 'mist', 'seal', 'windTotem', 'moonDrum', 'soulWell'];
+    const radii = [112, 132, 158, 150, 128, 122];
+    const colors = [0xff7a32, 0xff7ba8, 0xffd55f, 0xa8e4c2, 0x76dce7, 0x84bfff];
+    positions.forEach(([x, y], order) => {
+      const color = colors[index];
+      const radius = radii[index];
+      const aura = this.add.circle(x, y, radius, color, index === 1 ? .1 : .055).setStrokeStyle(3, color, .28).setDepth(11);
+      const core = this.add.circle(x, y, 24 + index * 2, color, .6).setStrokeStyle(5, 0xffefc4, .72).setDepth(12);
+      const sigil = this.add.graphics({ x, y }).setDepth(13);
+      sigil.lineStyle(3, color, .82).strokeCircle(0, 0, 40 + index * 3);
+      for (let ray = 0; ray < 8; ray += 1) {
+        const angle = ray / 8 * Math.PI * 2;
+        sigil.lineBetween(Math.cos(angle) * 30, Math.sin(angle) * 30, Math.cos(angle) * 48, Math.sin(angle) * 48);
+      }
+      if (index === 0) {
+        core.setFillStyle(0x6b241e, .95);
+        sigil.fillStyle(0xffc04e, .9).fillTriangle(-13, 14, 0, -30, 13, 14).fillTriangle(-20, 16, -8, -13, 0, 18);
+      } else if (index === 1) {
+        sigil.lineStyle(5, 0xffbfd7, .82).beginPath().arc(0, 3, 28, -.4, Math.PI + .4).strokePath();
+        core.setAlpha(.38);
+      } else if (index === 2) {
+        sigil.lineStyle(4, 0xffe7a0, .86).lineBetween(-28, 0, 28, 0).lineBetween(0, -28, 0, 28);
+      } else if (index === 3) {
+        sigil.lineStyle(4, 0xd5f8e4, .82).beginPath().arc(0, 0, 28, -.8, 1.7).strokePath();
+      } else if (index === 4) {
+        core.setFillStyle(0x33284f, .95);
+        sigil.fillStyle(0xe9d7ff, .65).fillCircle(-10, -5, 6).fillCircle(10, -5, 6);
+      } else {
+        core.setFillStyle(0x172845, .95);
+        sigil.lineStyle(4, 0xb5e3ff, .8).strokeCircle(0, 0, 18).strokeCircle(0, 0, 31);
+      }
+      const label = this.add.text(x, y + radius + 10, order === 0 ? chapter.deviceName : '', {
+        fontFamily: '"Malgun Gothic", sans-serif', fontSize: '13px', fontStyle: 'bold', color: '#fff1c9', stroke: '#17131d', strokeThickness: 4
+      }).setOrigin(.5).setDepth(14);
+      const auraTween = this.tweens.add({ targets: aura, scaleX: 1.08, scaleY: 1.08, alpha: index === 1 ? .16 : .1, yoyo: true, repeat: -1, duration: 1150 + order * 170, ease: 'Sine.easeInOut' });
+      const sigilTween = this.tweens.add({ targets: sigil, angle: order % 2 ? -360 : 360, repeat: -1, duration: 7600 + order * 900 });
+      this.mapDeviceTweens.push(auraTween, sigilTween);
+      this.mapDeviceObjects.push(aura, core, sigil, label);
+      this.mapDevices.push({ type: types[index], x, y, radius, color, aura, core, sigil, nextPulse: this.time.now + 2600 + order * 950, order });
     });
   }
 
@@ -944,6 +1127,8 @@ class GameScene extends Phaser.Scene {
     this.nextSpawnAt = this.time.now + 1200;
     this.nextHazardAt = this.time.now + 7000;
     this.nextAreaPulseAt = this.time.now + 4000;
+    this.nextAmbientAt = this.time.now;
+    this.mapGuard = 0;
     this.state = 'running';
 
     this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, character.id)
@@ -978,7 +1163,7 @@ class GameScene extends Phaser.Scene {
     this.updateHud();
     audio.setNight(false);
     audio.startBgm();
-    showToast(`설화 1 · ${CAMPAIGN[0].story} 해가 지기 전에 힘을 모으세요.`, 4600);
+    showToast(`설화 1 · ${CAMPAIGN[0].story} 지형 장치: ${CAMPAIGN[0].deviceName}`, 5000);
   }
 
   update(time, delta) {
@@ -989,6 +1174,8 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed += deltaSeconds;
 
     this.updateMovement();
+    this.updateMapDevices(time, deltaSeconds);
+    this.updateAmbientScenery(time);
     this.updateDayNight();
     this.updateEnemiesAndPickups(deltaSeconds);
     this.updateSecondaryWeapons(time);
@@ -1057,6 +1244,138 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  updateMapDevices(time, deltaSeconds) {
+    this.mapGuard = 0;
+    (this.mapDevices || []).forEach(device => {
+      if (!device.core?.active) return;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, device.x, device.y);
+      device.core.setScale(1 + Math.sin(time * .006 + device.order) * .08);
+
+      if (device.type === 'mist' && distance <= device.radius) {
+        this.player.setVelocity(this.player.body.velocity.x * .72, this.player.body.velocity.y * .72);
+      } else if (device.type === 'moonDrum' && distance <= device.radius) {
+        this.mapGuard = Math.max(this.mapGuard, .35);
+        this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + deltaSeconds * .35);
+      } else if (device.type === 'soulWell' && distance <= device.radius) {
+        this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + deltaSeconds * 1.15);
+      }
+
+      if (time < device.nextPulse || this.bossDefeated) return;
+      const delays = { brazier: 4900, mist: 5200, seal: 4700, windTotem: 4500, moonDrum: 4800, soulWell: 6200 };
+      device.nextPulse = time + delays[device.type];
+      this.triggerMapDevice(device);
+    });
+  }
+
+  triggerMapDevice(device) {
+    if (!device?.core?.active || this.state !== 'running') return;
+    const { x, y, radius, color, type } = device;
+    this.createDevicePulse(x, y, color, radius);
+
+    if (type === 'brazier') {
+      const warning = this.add.circle(x, y, radius, 0xff5a2e, .1).setStrokeStyle(5, 0xffb653, .9).setDepth(21);
+      this.tweens.add({ targets: warning, scaleX: .42, scaleY: .42, alpha: .8, duration: 650 });
+      this.time.delayedCall(660, () => {
+        warning.destroy();
+        if (!device.core?.active || this.state !== 'running') return;
+        this.createImpactBurst(x, y, 0xff7938, radius);
+        this.createGroundCracks(x, y, 0xffb04c, radius * .9);
+        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) <= radius + 18) this.takePlayerDamage(7 + this.chapterIndex, x, y);
+        this.enemies.getChildren().filter(enemy => enemy.active && Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y) <= radius).forEach(enemy => {
+          this.damageEnemy(enemy, 24 + this.level * 1.4, { color: 0xff8138, knockback: 72 });
+        });
+        audio.impact(true);
+      });
+    } else if (type === 'mist') {
+      const wisps = 3 + Math.floor(this.elapsed / 24);
+      for (let count = 0; count < wisps; count += 1) this.spawnEnemy(count === 0 && this.elapsed >= SUNSET_START);
+      for (let mote = 0; mote < 10; mote += 1) {
+        const angle = mote / 10 * Math.PI * 2;
+        const wisp = this.add.circle(x + Math.cos(angle) * 35, y + Math.sin(angle) * 35, 8, 0xff9fc4, .5).setDepth(22);
+        this.tweens.add({ targets: wisp, x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius, alpha: 0, duration: 620, onComplete: () => wisp.destroy() });
+      }
+      audio.tone(680, .28, 'sine', .035);
+    } else if (type === 'seal') {
+      this.enemies.getChildren().filter(enemy => enemy.active && Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y) <= radius + 34).forEach(enemy => {
+        this.damageEnemy(enemy, 20 + this.level * 1.15, { color: 0xffda69, knockback: 145 });
+      });
+      this.createGroundCracks(x, y, 0xffe291, radius * .72);
+      audio.tone(210, .3, 'triangle', .045);
+      audio.tone(420, .34, 'sine', .026, .04);
+    } else if (type === 'windTotem') {
+      const angle = (device.order * 2.15 + this.elapsed * .08) % (Math.PI * 2);
+      this.createWindSweep(x, y, angle, radius * 1.75, 0xc8f5db);
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) <= radius * 1.55) {
+        this.player.setVelocity(this.player.body.velocity.x + Math.cos(angle) * 310, this.player.body.velocity.y + Math.sin(angle) * 310);
+      }
+      audio.tone(240, .36, 'sine', .03);
+    } else if (type === 'moonDrum') {
+      this.hazardZones = this.hazardZones.filter(zone => {
+        if (Phaser.Math.Distance.Between(x, y, zone.x, zone.y) > radius * 1.55) return true;
+        zone.visual?.destroy();
+        zone.rune?.destroy();
+        return false;
+      });
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) <= radius * 1.25) this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + 4);
+      audio.tone(145, .4, 'triangle', .055);
+      audio.tone(290, .45, 'sine', .03, .08);
+    } else if (type === 'soulWell') {
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) <= radius * 1.35) this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + 7);
+      this.spawnEnemy(true);
+      for (let soul = 0; soul < 7; soul += 1) {
+        const angle = soul / 7 * Math.PI * 2;
+        const mote = this.add.circle(x, y, 6, 0xbde8ff, .72).setDepth(23);
+        this.tweens.add({ targets: mote, x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius - 32, alpha: 0, duration: 780, onComplete: () => mote.destroy() });
+      }
+      audio.tone(330, .42, 'sine', .035);
+    }
+  }
+
+  createDevicePulse(x, y, color, radius) {
+    const outer = this.add.circle(x, y, 26, color, .08).setStrokeStyle(5, color, .78).setDepth(20);
+    const inner = this.add.circle(x, y, 16, 0xffffff, .16).setStrokeStyle(2, 0xffffff, .7).setDepth(21);
+    this.tweens.add({ targets: outer, radius, alpha: 0, duration: 620, ease: 'Cubic.easeOut', onComplete: () => outer.destroy() });
+    this.tweens.add({ targets: inner, radius: radius * .65, alpha: 0, duration: 430, delay: 90, onComplete: () => inner.destroy() });
+  }
+
+  createGroundCracks(x, y, color, radius) {
+    const cracks = this.add.graphics().setDepth(34);
+    cracks.lineStyle(4, color, .88);
+    for (let ray = 0; ray < 9; ray += 1) {
+      const angle = ray / 9 * Math.PI * 2 + Phaser.Math.FloatBetween(-.16, .16);
+      const inner = radius * .18;
+      const middle = radius * Phaser.Math.FloatBetween(.45, .65);
+      cracks.beginPath().moveTo(x + Math.cos(angle) * inner, y + Math.sin(angle) * inner)
+        .lineTo(x + Math.cos(angle + .08) * middle, y + Math.sin(angle + .08) * middle)
+        .lineTo(x + Math.cos(angle - .05) * radius, y + Math.sin(angle - .05) * radius).strokePath();
+    }
+    this.tweens.add({ targets: cracks, alpha: 0, duration: 520, onComplete: () => cracks.destroy() });
+  }
+
+  createWindSweep(x, y, angle, length, color) {
+    const wind = this.add.graphics().setDepth(33);
+    for (let streak = -3; streak <= 3; streak += 1) {
+      const offsetX = Math.cos(angle + Math.PI / 2) * streak * 18;
+      const offsetY = Math.sin(angle + Math.PI / 2) * streak * 18;
+      wind.lineStyle(3 + (3 - Math.abs(streak)), color, .54 - Math.abs(streak) * .05);
+      wind.lineBetween(x - Math.cos(angle) * length * .45 + offsetX, y - Math.sin(angle) * length * .45 + offsetY, x + Math.cos(angle) * length * .45 + offsetX, y + Math.sin(angle) * length * .45 + offsetY);
+    }
+    this.tweens.add({ targets: wind, x: Math.cos(angle) * 120, y: Math.sin(angle) * 120, alpha: 0, duration: 620, onComplete: () => wind.destroy() });
+  }
+
+  updateAmbientScenery(time) {
+    if (time < (this.nextAmbientAt || 0)) return;
+    this.nextAmbientAt = time + (this.elapsed >= NIGHT_START ? 150 : 245);
+    const palettes = [0xff9a46, 0xff9fc9, 0xffd96b, 0xb9ecc8, 0x8be3ed, 0x9dcfff];
+    const color = palettes[this.chapterIndex];
+    const x = Phaser.Math.Clamp(this.player.x + Phaser.Math.Between(-470, 470), 20, WORLD_WIDTH - 20);
+    const y = Phaser.Math.Clamp(this.player.y + Phaser.Math.Between(-310, 310), 20, WORLD_HEIGHT - 20);
+    const mote = this.add.circle(x, y, 2 + this.chapterIndex % 3, color, .46).setDepth(15);
+    const driftX = this.chapterIndex === 3 ? Phaser.Math.Between(90, 180) : Phaser.Math.Between(-35, 35);
+    const driftY = this.chapterIndex === 0 || this.chapterIndex === 5 ? Phaser.Math.Between(-105, -55) : Phaser.Math.Between(-38, 38);
+    this.tweens.add({ targets: mote, x: x + driftX, y: y + driftY, alpha: 0, scaleX: 2.2, scaleY: .35, duration: 1250 + Phaser.Math.Between(0, 650), onComplete: () => mote.destroy() });
+  }
+
   updateDayNight() {
     let phase = '낮';
     let darkness = 0;
@@ -1074,7 +1393,12 @@ class GameScene extends Phaser.Scene {
     }
 
     const chapterGround = (CAMPAIGN[this.chapterIndex] || CAMPAIGN[0]).ground;
-    const dayGround = { r: chapterGround >> 16 & 255, g: chapterGround >> 8 & 255, b: chapterGround & 255 };
+    const baseGround = { r: chapterGround >> 16 & 255, g: chapterGround >> 8 & 255, b: chapterGround & 255 };
+    const dayGround = {
+      r: Math.min(255, Math.round(baseGround.r * .86 + 66)),
+      g: Math.min(255, Math.round(baseGround.g * .86 + 62)),
+      b: Math.min(255, Math.round(baseGround.b * .86 + 56))
+    };
     const duskGround = { r: Math.round(dayGround.r * .92 + 42), g: Math.round(dayGround.g * .72 + 28), b: Math.round(dayGround.b * .65 + 25) };
     const nightGround = { r: Math.round(dayGround.r * .42 + 25), g: Math.round(dayGround.g * .48 + 35), b: Math.round(dayGround.b * .58 + 50) };
     const firstMix = Math.min(1, dayMix * 2);
@@ -1084,6 +1408,7 @@ class GameScene extends Phaser.Scene {
     this.ground.setTint(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
     this.sun.setAlpha(1 - dayMix).setPosition(WIDTH - 90 - dayMix * 100, 92 + dayMix * 55);
     this.moon.setAlpha(Math.max(0, dayMix * 1.4 - .4)).setPosition(92 + dayMix * 55, 92 - dayMix * 20);
+    this.daylight.setAlpha(.26 * (1 - Math.pow(dayMix, .72)));
     this.darkness.setAlpha(darkness);
 
     const lanternVisible = dayMix > .08;
@@ -1178,10 +1503,9 @@ class GameScene extends Phaser.Scene {
       }
       if (projectile.getData('spin')) projectile.setAngle(projectile.angle + 18);
       else if (projectile.body?.velocity) projectile.setRotation(Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x));
-      if (projectile.texture.key === 'foxfire' && this.time.now - (projectile.getData('lastTrailAt') || 0) > 70) {
+      if (this.time.now - (projectile.getData('lastTrailAt') || 0) > 65) {
         projectile.setData('lastTrailAt', this.time.now);
-        const trail = this.add.circle(projectile.x, projectile.y, 5, 0xff7182, .55).setDepth(23);
-        this.tweens.add({ targets: trail, alpha: 0, scaleX: .25, scaleY: .25, duration: 260, onComplete: () => trail.destroy() });
+        this.createProjectileTrail(projectile);
       }
     });
     this.enemyProjectiles.getChildren().forEach(projectile => {
@@ -1193,7 +1517,8 @@ class GameScene extends Phaser.Scene {
       projectile.setAngle(projectile.angle + 9);
       if (this.time.now - (projectile.getData('lastTrailAt') || 0) > 65) {
         projectile.setData('lastTrailAt', this.time.now);
-        const trail = this.add.circle(projectile.x, projectile.y, 5, 0xd8a8ff, .62).setDepth(23);
+        const trailColor = projectile.getData('trailColor') || 0xd8a8ff;
+        const trail = this.add.circle(projectile.x, projectile.y, projectile.displayWidth > 20 ? 7 : 5, trailColor, .62).setStrokeStyle(2, 0xffffff, .32).setDepth(23);
         this.tweens.add({
           targets: trail,
           alpha: 0,
@@ -1212,16 +1537,17 @@ class GameScene extends Phaser.Scene {
 
   spawnWave() {
     const progress = Phaser.Math.Clamp(this.elapsed / NIGHT_START, 0, 1);
-    const cap = 26 + this.chapterIndex * 8 + Math.floor(progress * 38);
+    const overtime = Phaser.Math.Clamp((this.elapsed - NIGHT_START) / 45, 0, .7);
+    const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
+    const cap = Math.min(122, 30 + this.chapterIndex * 12 + Math.floor(progress * (42 + this.chapterIndex * 4) + overtime * 18));
     if (this.enemies.countActive(true) >= cap) {
-      this.nextSpawnAt = this.time.now + 420;
+      this.nextSpawnAt = this.time.now + 320;
       return;
     }
-    const chapterPressure = Math.pow(.94, this.chapterIndex);
-    const interval = Phaser.Math.Linear(1650, 390, Math.pow(progress, 1.22)) * chapterPressure;
-    const batch = 1 + Math.floor(progress * 2.2) + (this.chapterIndex >= 4 && progress > .65 ? 1 : 0);
+    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24);
+    const batch = 1 + Math.floor(progress * 2.65) + Math.floor(this.chapterIndex / 2) + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
     for (let index = 0; index < batch; index += 1) this.spawnEnemy(false);
-    this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(520, interval) : interval);
+    this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(360, interval * 1.08) : Math.max(180, interval));
   }
 
   spawnEnemy(forceElite = false) {
@@ -1333,7 +1659,7 @@ class GameScene extends Phaser.Scene {
     const boss = this.enemies.create(x, y, chapter.bossTexture).setDisplaySize(190, 190).setDepth(24);
     boss.body.setCircle(88, 40, 74);
     boss.kind = 'boss';
-    boss.hp = 720 * (1 + this.chapterIndex * .48) + this.level * 34;
+    boss.hp = 1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55;
     boss.maxHp = boss.hp;
     boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale;
     boss.speed = 44 + this.chapterIndex * 3;
@@ -1345,6 +1671,7 @@ class GameScene extends Phaser.Scene {
     boss.setData('folkName', chapter.bossName);
     boss.setData('baseTint', 0xffffff);
     boss.setData('pattern', chapter.bossPattern);
+    boss.setData('enraged', false);
     this.activeBoss = boss;
     ui.bossName.textContent = `${chapter.bossName} · ${this.chapterIndex + 1}번째 설화`;
     ui.bossFill.style.width = '100%';
@@ -1357,6 +1684,17 @@ class GameScene extends Phaser.Scene {
 
   updateBoss(boss) {
     if (!boss?.active || !this.player?.active) return;
+    if (!boss.getData('enraged') && boss.hp / boss.maxHp <= .55) {
+      boss.setData('enraged', true);
+      boss.speed *= 1.2;
+      boss.nextAttackAt = Math.min(boss.nextAttackAt, this.time.now + 620);
+      this.createDevicePulse(boss.x, boss.y, CAMPAIGN[this.chapterIndex].accent, 165);
+      this.createGroundCracks(boss.x, boss.y, CAMPAIGN[this.chapterIndex].accent, 125);
+      this.cameras.main.flash(240, 255, 88, 72, false);
+      this.cameras.main.shake(260, .009);
+      audio.boss();
+      showToast(`${CAMPAIGN[this.chapterIndex].bossName}이(가) 두 번째 힘을 해방했습니다!`, 2600);
+    }
     const distance = Phaser.Math.Distance.Between(boss.x, boss.y, this.player.x, this.player.y);
     const angle = Phaser.Math.Angle.Between(boss.x, boss.y, this.player.x, this.player.y);
     if (distance > 175) this.physics.velocityFromRotation(angle, boss.speed, boss.body.velocity);
@@ -1369,7 +1707,8 @@ class GameScene extends Phaser.Scene {
   performBossPattern(boss) {
     if (!boss?.active || boss.getData('attacking')) return;
     const pattern = boss.getData('pattern');
-    boss.nextAttackAt = this.time.now + Math.max(1450, 3100 - this.chapterIndex * 170);
+    const enraged = boss.getData('enraged');
+    boss.nextAttackAt = this.time.now + Math.max(1050, (3100 - this.chapterIndex * 170) * (enraged ? .72 : 1));
     boss.setData('attacking', true);
     boss.setVelocity(0, 0);
     boss.setTint(0xffc2a1);
@@ -1377,10 +1716,20 @@ class GameScene extends Phaser.Scene {
     const targetY = this.player.y;
 
     if (pattern === 'charge') {
-      const line = this.add.graphics().setDepth(23).lineStyle(12, 0xffb43b, .24).lineBetween(boss.x, boss.y, targetX, targetY);
+      const chargeAngle = Phaser.Math.Angle.Between(boss.x, boss.y, targetX, targetY);
+      const line = this.add.graphics().setDepth(23);
+      line.lineStyle(18, 0xff8d2f, .2).lineBetween(boss.x, boss.y, targetX, targetY);
+      line.lineStyle(4, 0xffe08a, .82).lineBetween(boss.x, boss.y, targetX, targetY);
+      for (let offset = -1; offset <= 1; offset += 2) {
+        line.lineStyle(3, 0xffb43b, .58).lineBetween(boss.x + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, boss.y + Math.sin(chargeAngle + Math.PI / 2) * offset * 18, targetX + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, targetY + Math.sin(chargeAngle + Math.PI / 2) * offset * 18);
+      }
+      const targetMark = this.createHazardTelegraph(targetX, targetY, 72, 0xffb43b, 680);
       this.tweens.add({ targets: line, alpha: 0, duration: 680, onComplete: () => line.destroy() });
       this.time.delayedCall(620, () => {
-        if (!boss.active) return;
+        if (!boss.active) {
+          targetMark.destroy();
+          return;
+        }
         this.createImpactBurst(boss.x, boss.y, 0xffbd4f, 34);
         this.tweens.add({
           targets: boss,
@@ -1388,7 +1737,14 @@ class GameScene extends Phaser.Scene {
           y: targetY,
           duration: 650,
           ease: 'Cubic.easeIn',
-          onComplete: () => this.finishBossAttack(boss)
+          onComplete: () => {
+            targetMark.destroy();
+            if (!boss.active) return;
+            this.createImpactBurst(targetX, targetY, 0xffbd4f, 92);
+            this.createGroundCracks(targetX, targetY, 0xffd36c, 94);
+            if (Phaser.Math.Distance.Between(this.player.x, this.player.y, targetX, targetY) <= 118) this.takePlayerDamage(boss.damage * (enraged ? 1.45 : 1.2), boss.x, boss.y);
+            this.finishBossAttack(boss);
+          }
         });
       });
       return;
@@ -1403,7 +1759,9 @@ class GameScene extends Phaser.Scene {
         if (!boss.active) return;
         boss.setPosition(targetX, targetY);
         this.createImpactBurst(targetX, targetY, 0xffb84d, 95);
+        this.createGroundCracks(targetX, targetY, 0xffd46b, 112);
         if (Phaser.Math.Distance.Between(this.player.x, this.player.y, targetX, targetY) < 105) this.takePlayerDamage(boss.damage * 1.3, boss.x, boss.y);
+        if (enraged) for (let index = 0; index < 8; index += 1) this.createBossProjectile(boss, index / 8 * Math.PI * 2, 138, 0xbfe89b);
         this.finishBossAttack(boss);
       });
       return;
@@ -1411,6 +1769,7 @@ class GameScene extends Phaser.Scene {
 
     const warningColor = pattern === 'foxfire' ? 0xff6688 : pattern === 'plague' ? 0x63dce8 : pattern === 'judgment' ? 0x91bfff : 0xffa43b;
     const warning = this.add.circle(boss.x, boss.y, 54, warningColor, .17).setStrokeStyle(6, warningColor, .95).setDepth(23);
+    this.createAttackSigil(boss.x, boss.y, warningColor, enraged ? 92 : 74, enraged ? 12 : 8);
     this.tweens.add({ targets: warning, scaleX: .5, scaleY: .5, alpha: .9, yoyo: true, repeat: 1, duration: 250 });
     this.time.delayedCall(660, () => {
       warning.destroy();
@@ -1419,16 +1778,20 @@ class GameScene extends Phaser.Scene {
         this.createImpactBurst(boss.x, boss.y, 0xff9b3e, 120);
         this.cameras.main.shake(180, .008);
         if (Phaser.Math.Distance.Between(boss.x, boss.y, this.player.x, this.player.y) < 145) this.takePlayerDamage(boss.damage * 1.2, boss.x, boss.y);
-        for (let index = 0; index < 10; index += 1) this.createBossProjectile(boss, index / 10 * Math.PI * 2, 128, 0xff8a3d);
+        const count = enraged ? 14 : 10;
+        for (let index = 0; index < count; index += 1) this.createBossProjectile(boss, index / count * Math.PI * 2, enraged ? 150 : 128, 0xff8a3d);
       } else if (pattern === 'foxfire') {
         const aimed = Phaser.Math.Angle.Between(boss.x, boss.y, this.player.x, this.player.y);
-        for (let index = -3; index <= 3; index += 1) this.createBossProjectile(boss, aimed + index * .18, 142, 0xff5c88);
+        const spread = enraged ? 4 : 3;
+        for (let index = -spread; index <= spread; index += 1) this.createBossProjectile(boss, aimed + index * .16, enraged ? 166 : 142, 0xff5c88);
       } else if (pattern === 'plague') {
         this.createPersistentHazard(targetX, targetY, 92, 0x43d4dc, 6200, boss.damage * .45);
-        for (let index = 0; index < 8; index += 1) this.createBossProjectile(boss, index / 8 * Math.PI * 2, 118, 0x68d9ed);
+        const count = enraged ? 12 : 8;
+        for (let index = 0; index < count; index += 1) this.createBossProjectile(boss, index / count * Math.PI * 2, enraged ? 142 : 118, 0x68d9ed);
       } else if (pattern === 'judgment') {
         const aimed = Phaser.Math.Angle.Between(boss.x, boss.y, this.player.x, this.player.y);
-        for (let index = 0; index < 12; index += 1) this.createBossProjectile(boss, aimed + index / 12 * Math.PI * 2, index % 2 ? 112 : 155, 0x91bfff);
+        const count = enraged ? 16 : 12;
+        for (let index = 0; index < count; index += 1) this.createBossProjectile(boss, aimed + index / count * Math.PI * 2, index % 2 ? 128 : 172, 0x91bfff);
         this.createPersistentHazard(targetX, targetY, 72, 0x5d77dd, 4200, boss.damage * .55);
       }
       this.finishBossAttack(boss);
@@ -1441,6 +1804,7 @@ class GameScene extends Phaser.Scene {
     projectile.damage = boss.damage * .72;
     projectile.setData('bornAt', this.time.now);
     projectile.setData('lastTrailAt', this.time.now);
+    projectile.setData('trailColor', tint);
     this.physics.velocityFromRotation(angle, speed, projectile.body.velocity);
   }
 
@@ -1516,6 +1880,7 @@ class GameScene extends Phaser.Scene {
     const strikeY = this.player.y + Math.sin(facing) * Math.min(targets[0].distance, maxDistance * .72);
     const wave = this.add.graphics().setDepth(34);
     wave.lineStyle(10, 0xffc45c, .92).beginPath().arc(this.player.x, this.player.y, maxDistance, facing - .62, facing + .62).strokePath();
+    wave.lineStyle(4, 0xfff0a8, .72).beginPath().arc(this.player.x, this.player.y, maxDistance * .82, facing - .7, facing + .7).strokePath();
     wave.lineStyle(4, 0x7a321d, .9).lineBetween(this.player.x, this.player.y, strikeX, strikeY);
     this.tweens.add({ targets: wave, alpha: 0, scaleX: 1.16, scaleY: 1.16, duration: 260, onComplete: () => wave.destroy() });
     this.enemies.getChildren().filter(enemy => enemy.active).forEach(enemy => {
@@ -1526,11 +1891,13 @@ class GameScene extends Phaser.Scene {
       }
     });
     this.createImpactBurst(strikeX, strikeY, 0xff8a32, 34 * this.stats.areaScale);
+    this.createGroundCracks(strikeX, strikeY, 0xffbf5c, 62 * this.stats.areaScale);
     this.cameras.main.shake(55, .0028);
   }
 
   attackGumiho(targets) {
     const count = Math.max(1, Math.floor(this.stats.projectiles));
+    this.createAttackSigil(this.player.x, this.player.y, 0xff739d, 48 + count * 5, 9);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
       this.launchProjectile(target, 'foxfire', { width: 22, multiplier: .94, speed: 340, homing: true, splash: 46 * this.stats.areaScale, tint: 0xff8396, life: 2600 });
@@ -1541,6 +1908,14 @@ class GameScene extends Phaser.Scene {
     const radius = 185 * this.stats.areaScale;
     const ring = this.add.circle(this.player.x, this.player.y, 32, 0xffd86b, .15).setStrokeStyle(8, 0xffdd74, .95).setDepth(32);
     this.tweens.add({ targets: ring, radius, alpha: 0, duration: 420, onComplete: () => ring.destroy() });
+    this.createAttackSigil(this.player.x, this.player.y, 0xffe58a, 64 * this.stats.areaScale, 8);
+    const rays = this.add.graphics().setDepth(33);
+    for (let ray = 0; ray < 12; ray += 1) {
+      const angle = ray / 12 * Math.PI * 2;
+      rays.lineStyle(ray % 2 ? 3 : 6, ray % 2 ? 0xfff4c0 : 0xffc84c, .75);
+      rays.lineBetween(this.player.x + Math.cos(angle) * 48, this.player.y + Math.sin(angle) * 48, this.player.x + Math.cos(angle) * radius, this.player.y + Math.sin(angle) * radius);
+    }
+    this.tweens.add({ targets: rays, alpha: 0, angle: 9, duration: 360, onComplete: () => rays.destroy() });
     let struck = 0;
     targets.forEach(({ enemy, distance }) => {
       if (distance > radius) return;
@@ -1552,6 +1927,8 @@ class GameScene extends Phaser.Scene {
 
   attackSansin(targets) {
     const count = Math.max(1, Math.floor(this.stats.projectiles));
+    const aim = Phaser.Math.Angle.Between(this.player.x, this.player.y, targets[0].enemy.x, targets[0].enemy.y);
+    this.createWindSweep(this.player.x, this.player.y, aim, 155, 0xd8f3b7);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
       const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
@@ -1562,6 +1939,7 @@ class GameScene extends Phaser.Scene {
 
   attackCheoyong(targets) {
     const nearby = targets.filter(target => target.distance <= 225 * this.stats.areaScale).slice(0, 2 + Math.floor(this.stats.projectiles));
+    this.createAttackSigil(this.player.x, this.player.y, 0xc39aed, 52 * this.stats.areaScale, 5);
     if (!nearby.length) {
       this.launchProjectile(targets[0].enemy, 'dance-blade', { width: 25, multiplier: .88, speed: 460, spin: true, ricochet: 1, tint: 0xcbb0ff });
       return;
@@ -1577,6 +1955,7 @@ class GameScene extends Phaser.Scene {
 
   attackBaridegi(targets) {
     const count = Math.max(1, Math.floor(this.stats.projectiles));
+    this.createAttackSigil(this.player.x, this.player.y, 0xa8ddff, 54 + count * 4, 6);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
       this.launchProjectile(target, 'spirit-bloom', { width: 25, multiplier: .88, speed: 370, homing: true, chain: 2, tint: 0xaedcff, life: 2700 });
@@ -1703,18 +2082,66 @@ class GameScene extends Phaser.Scene {
 
   createHeroSlash(x, y, index = 0) {
     const slash = this.add.graphics().setDepth(38);
-    slash.lineStyle(7, index % 2 ? 0xffd774 : 0xd1b1ff, 1);
+    slash.lineStyle(9, index % 2 ? 0xffd774 : 0xd1b1ff, .95);
     slash.beginPath().arc(x, y, 34 * this.stats.areaScale, -1.8 + index, .8 + index).strokePath();
+    slash.lineStyle(3, 0xffffff, .82).beginPath().arc(x, y, 25 * this.stats.areaScale, -1.65 + index, .65 + index).strokePath();
+    for (let ribbon = 0; ribbon < 4; ribbon += 1) {
+      const angle = index + ribbon / 4 * Math.PI * 2;
+      slash.lineStyle(2, 0xa879dc, .6).lineBetween(x + Math.cos(angle) * 12, y + Math.sin(angle) * 12, x + Math.cos(angle + .35) * 48, y + Math.sin(angle + .35) * 48);
+    }
     this.tweens.add({ targets: slash, alpha: 0, angle: 35, scaleX: 1.25, scaleY: 1.25, duration: 230, onComplete: () => slash.destroy() });
+  }
+
+  createAttackSigil(x, y, color, radius, points = 8) {
+    const sigil = this.add.graphics({ x, y }).setDepth(34);
+    sigil.lineStyle(3, color, .82).strokeCircle(0, 0, radius).strokeCircle(0, 0, radius * .52);
+    for (let point = 0; point < points; point += 1) {
+      const angle = point / points * Math.PI * 2;
+      const nextAngle = (point + 2) / points * Math.PI * 2;
+      sigil.lineStyle(point % 2 ? 2 : 4, point % 2 ? 0xffffff : color, .64);
+      sigil.lineBetween(Math.cos(angle) * radius * .5, Math.sin(angle) * radius * .5, Math.cos(nextAngle) * radius, Math.sin(nextAngle) * radius);
+      sigil.fillStyle(color, .72).fillCircle(Math.cos(angle) * radius, Math.sin(angle) * radius, 3 + point % 2);
+    }
+    this.tweens.add({ targets: sigil, angle: 35, scaleX: 1.22, scaleY: 1.22, alpha: 0, duration: 420, ease: 'Cubic.easeOut', onComplete: () => sigil.destroy() });
+  }
+
+  createProjectileTrail(projectile) {
+    if (!projectile?.active) return;
+    const texture = projectile.texture.key;
+    if (texture === 'arrow') {
+      const angle = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
+      const trail = this.add.graphics().setDepth(23);
+      trail.lineStyle(5, 0xc7edaa, .5).lineBetween(projectile.x, projectile.y, projectile.x - Math.cos(angle) * 34, projectile.y - Math.sin(angle) * 34);
+      trail.lineStyle(2, 0xffffff, .7).lineBetween(projectile.x, projectile.y, projectile.x - Math.cos(angle) * 20, projectile.y - Math.sin(angle) * 20);
+      this.tweens.add({ targets: trail, alpha: 0, duration: 170, onComplete: () => trail.destroy() });
+      return;
+    }
+    if (texture === 'dance-blade') {
+      const trail = this.add.graphics().setDepth(23);
+      trail.lineStyle(5, 0xbc8bea, .58).beginPath().arc(projectile.x, projectile.y, 15, projectile.rotation - 1.3, projectile.rotation + .5).strokePath();
+      this.tweens.add({ targets: trail, alpha: 0, scaleX: 1.35, scaleY: 1.35, duration: 210, onComplete: () => trail.destroy() });
+      return;
+    }
+    if (texture === 'spirit-bloom') {
+      const trail = this.add.circle(projectile.x, projectile.y, 5, 0xa9dfff, .52).setStrokeStyle(2, 0xffffff, .48).setDepth(23);
+      this.tweens.add({ targets: trail, y: trail.y - 12, angle: 90, alpha: 0, scaleX: .2, scaleY: .2, duration: 330, onComplete: () => trail.destroy() });
+      return;
+    }
+    const color = texture === 'foxfire' ? 0xff718f : 0xffe18a;
+    const trail = this.add.circle(projectile.x, projectile.y, texture === 'foxfire' ? 6 : 4, color, .55).setDepth(23);
+    this.tweens.add({ targets: trail, alpha: 0, scaleX: .2, scaleY: .2, duration: 260, onComplete: () => trail.destroy() });
   }
 
   createImpactBurst(x, y, color, radius = 12) {
     const burst = this.add.circle(x, y, Math.max(4, radius * .3), color, .72).setStrokeStyle(3, color, 1).setDepth(39);
+    const flash = this.add.circle(x, y, Math.max(3, radius * .16), 0xffffff, .85).setDepth(40);
     this.tweens.add({ targets: burst, radius, alpha: 0, duration: 250, onComplete: () => burst.destroy() });
-    for (let index = 0; index < 4; index += 1) {
-      const spark = this.add.rectangle(x, y, 4, 4, color, .9).setDepth(40);
-      const angle = index / 4 * Math.PI * 2 + Phaser.Math.FloatBetween(-.35, .35);
-      this.tweens.add({ targets: spark, x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius, alpha: 0, angle: 90, duration: 260, onComplete: () => spark.destroy() });
+    this.tweens.add({ targets: flash, radius: radius * .55, alpha: 0, duration: 150, onComplete: () => flash.destroy() });
+    const sparkCount = radius >= 28 ? 8 : 4;
+    for (let index = 0; index < sparkCount; index += 1) {
+      const spark = this.add.rectangle(x, y, index % 2 ? 3 : 5, index % 2 ? 8 : 5, color, .9).setDepth(40);
+      const angle = index / sparkCount * Math.PI * 2 + Phaser.Math.FloatBetween(-.25, .25);
+      this.tweens.add({ targets: spark, x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius, alpha: 0, angle: angle * 180 / Math.PI + 90, duration: 280, onComplete: () => spark.destroy() });
     }
   }
 
@@ -1766,9 +2193,11 @@ class GameScene extends Phaser.Scene {
     this.hazardZones = this.hazardZones.filter(zone => {
       if (time >= zone.expires || !zone.visual?.active) {
         zone.visual?.destroy();
+        zone.rune?.destroy();
         return false;
       }
       zone.visual.setAlpha(.18 + Math.sin(time * .006) * .08);
+      if (zone.rune?.active) zone.rune.setAngle(zone.rune.angle + .45);
       if (time >= zone.nextDamage && Phaser.Math.Distance.Between(this.player.x, this.player.y, zone.x, zone.y) <= zone.radius) {
         zone.nextDamage = time + 950;
         this.takePlayerDamage(zone.damage, zone.x, zone.y);
@@ -1778,7 +2207,7 @@ class GameScene extends Phaser.Scene {
 
     if (time < this.nextHazardAt || this.bossDefeated) return;
     const chapter = CAMPAIGN[this.chapterIndex];
-    this.nextHazardAt = time + Math.max(4300, 8200 - this.chapterIndex * 430 - this.elapsed * 24);
+    this.nextHazardAt = time + Math.max(2600, (8300 - this.elapsed * 36) * Math.pow(.9, this.chapterIndex));
     const x = Phaser.Math.Clamp(this.player.x + Phaser.Math.Between(-170, 170), 80, WORLD_WIDTH - 80);
     const y = Phaser.Math.Clamp(this.player.y + Phaser.Math.Between(-150, 150), 80, WORLD_HEIGHT - 80);
     if (chapter.hazard === 'illusions') {
@@ -1798,22 +2227,45 @@ class GameScene extends Phaser.Scene {
       const colors = { embers: 0xff7839, shards: 0xffcf62, plague: 0x67d7e4 };
       const radii = { embers: 68, shards: 58, plague: 82 };
       const delays = { embers: 720, shards: 880, plague: 620 };
-      const marker = this.add.circle(x, y, radii[chapter.hazard], colors[chapter.hazard], .12).setStrokeStyle(4, colors[chapter.hazard], .9).setDepth(21);
-      this.tweens.add({ targets: marker, scaleX: .5, scaleY: .5, alpha: .8, duration: delays[chapter.hazard] });
+      const marker = this.createHazardTelegraph(x, y, radii[chapter.hazard], colors[chapter.hazard], delays[chapter.hazard]);
       this.time.delayedCall(delays[chapter.hazard], () => {
         marker.destroy();
         this.createImpactBurst(x, y, colors[chapter.hazard], radii[chapter.hazard]);
+        this.createGroundCracks(x, y, colors[chapter.hazard], radii[chapter.hazard] * .86);
         if (Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) <= radii[chapter.hazard] + 18) this.takePlayerDamage(7 + this.chapterIndex * 2, x, y);
         if (chapter.hazard === 'plague') this.createPersistentHazard(x, y, 72, colors[chapter.hazard], 4800, 6 + this.chapterIndex);
       });
     }
   }
 
+  createHazardTelegraph(x, y, radius, color, duration) {
+    const marker = this.add.graphics({ x, y }).setDepth(21);
+    marker.fillStyle(color, .11).fillCircle(0, 0, radius);
+    marker.lineStyle(5, color, .9).strokeCircle(0, 0, radius);
+    marker.lineStyle(2, 0xffffff, .52).strokeCircle(0, 0, radius * .63);
+    for (let tick = 0; tick < 12; tick += 1) {
+      const angle = tick / 12 * Math.PI * 2;
+      marker.lineStyle(tick % 3 ? 2 : 5, color, .78).lineBetween(Math.cos(angle) * radius * .72, Math.sin(angle) * radius * .72, Math.cos(angle) * radius, Math.sin(angle) * radius);
+    }
+    marker.fillStyle(0xffffff, .72).fillCircle(0, 0, 5);
+    this.tweens.add({ targets: marker, scaleX: .48, scaleY: .48, alpha: .86, angle: 32, duration, ease: 'Cubic.easeIn' });
+    return marker;
+  }
+
   createPersistentHazard(x, y, radius, color, duration, damage) {
-    const visual = this.add.circle(x, y, radius, color, .2).setStrokeStyle(4, color, .62).setDepth(19);
-    const rune = this.add.circle(x, y, radius * .55, color, .06).setStrokeStyle(2, 0xffffff, .35).setDepth(20);
-    this.tweens.add({ targets: rune, angle: 360, scaleX: 1.18, scaleY: 1.18, yoyo: true, repeat: Math.ceil(duration / 900), duration: 450, onComplete: () => rune.destroy() });
-    this.hazardZones.push({ visual, x, y, radius, damage, expires: this.time.now + duration, nextDamage: this.time.now + 300 });
+    const visual = this.add.graphics({ x, y }).setDepth(19);
+    visual.fillStyle(color, .2).fillCircle(0, 0, radius);
+    visual.lineStyle(5, color, .62).strokeCircle(0, 0, radius);
+    visual.lineStyle(2, 0xffffff, .22).strokeCircle(0, 0, radius * .72);
+    const rune = this.add.graphics({ x, y }).setDepth(20);
+    rune.lineStyle(3, 0xffffff, .38).strokeCircle(0, 0, radius * .5);
+    for (let point = 0; point < 6; point += 1) {
+      const angle = point / 6 * Math.PI * 2;
+      const next = (point + 2) / 6 * Math.PI * 2;
+      rune.lineBetween(Math.cos(angle) * radius * .22, Math.sin(angle) * radius * .22, Math.cos(next) * radius * .5, Math.sin(next) * radius * .5);
+    }
+    this.tweens.add({ targets: rune, scaleX: 1.18, scaleY: 1.18, yoyo: true, repeat: Math.ceil(duration / 900), duration: 450 });
+    this.hazardZones.push({ visual, rune, x, y, radius, damage, expires: this.time.now + duration, nextDamage: this.time.now + 300 });
   }
 
   killEnemy(enemy) {
@@ -1853,6 +2305,11 @@ class GameScene extends Phaser.Scene {
     this.chapterKills += 1;
     ui.bossPanel.classList.add('hidden');
     this.enemyProjectiles.clear(true, true);
+    this.hazardZones.forEach(zone => {
+      zone.visual?.destroy();
+      zone.rune?.destroy();
+    });
+    this.hazardZones = [];
     this.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
       enemy.getData('shadow')?.destroy();
@@ -1899,6 +2356,7 @@ class GameScene extends Phaser.Scene {
     this.orbs.clear(true, true);
     this.projectiles.clear(true, true);
     this.hazardZones.forEach(zone => zone.visual?.destroy());
+    this.hazardZones.forEach(zone => zone.rune?.destroy());
     this.hazardZones = [];
     this.player.setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setVelocity(0, 0);
     this.cameras.main.flash(620, 190, 220, 255, false);
@@ -1907,7 +2365,7 @@ class GameScene extends Phaser.Scene {
     audio.setNight(false);
     audio.portal();
     const chapter = CAMPAIGN[this.chapterIndex];
-    showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name}: ${chapter.story}`, 5200);
+    showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name}: ${chapter.story} 지형 장치: ${chapter.deviceName}`, 5600);
     this.time.delayedCall(720, () => {
       if (!this.player?.active) return;
       this.physics.resume();
@@ -2171,7 +2629,7 @@ class GameScene extends Phaser.Scene {
   takePlayerDamage(rawDamage, sourceX, sourceY) {
     if (this.time.now - this.lastHitAt < 900) return;
     this.lastHitAt = this.time.now;
-    const damage = Math.max(1, rawDamage - this.stats.armor);
+    const damage = Math.max(1, rawDamage * (1 - (this.mapGuard || 0)) - this.stats.armor);
     this.stats.hp -= damage;
     this.cameras.main.shake(70, .0045);
     this.tweens.killTweensOf(this.damageFlash);
@@ -2219,7 +2677,11 @@ class GameScene extends Phaser.Scene {
     const seconds = Math.floor(this.elapsed % 60).toString().padStart(2, '0');
     ui.timer.textContent = `${minutes}:${seconds}`;
     ui.runStats.textContent = `처치 ${this.kills} · 공격력 ${Math.round(this.stats.damage)} · 방어 ${this.stats.armor} · ${this.selectedCharacter.attack}`;
-    if (this.activeBoss?.active) ui.bossFill.style.width = `${Phaser.Math.Clamp(this.activeBoss.hp / this.activeBoss.maxHp * 100, 0, 100)}%`;
+    if (this.activeBoss?.active) {
+      ui.bossFill.style.width = `${Phaser.Math.Clamp(this.activeBoss.hp / this.activeBoss.maxHp * 100, 0, 100)}%`;
+      const phase = this.activeBoss.getData('enraged') ? ' · 폭주' : '';
+      ui.bossName.textContent = `${CAMPAIGN[this.chapterIndex].bossName}${phase} · ${Math.max(0, Math.ceil(this.activeBoss.hp))}/${Math.ceil(this.activeBoss.maxHp)}`;
+    }
     this.updateChapterHud();
     this.updateSunClock();
     this.drawMinimap();
@@ -2284,13 +2746,30 @@ class GameScene extends Phaser.Scene {
     context.fillRect(0, (WORLD_HEIGHT / 2 - 68) * scaleY, width, 136 * scaleY);
     context.fillRect((WORLD_WIDTH / 2 - 72) * scaleX, 0, 144 * scaleX, height);
 
-    context.fillStyle = 'rgba(42,76,55,.9)';
+    const accentCss = `#${chapter.accent.toString(16).padStart(6, '0')}`;
+    context.fillStyle = `${accentCss}55`;
     [
       [230, 250], [2140, 310], [300, 1480], [2050, 1430],
       [720, 620], [1690, 1180]
     ].forEach(([x, y]) => {
       context.beginPath();
       context.arc(x * scaleX, y * scaleY, 8, 0, Math.PI * 2);
+      context.fill();
+    });
+
+    (this.mapDevices || []).forEach(device => {
+      const x = device.x * scaleX;
+      const y = device.y * scaleY;
+      context.fillStyle = `${accentCss}33`;
+      context.strokeStyle = accentCss;
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(x, y, 7 + Math.sin(this.time.now * .005 + device.order) * 2, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.fillStyle = '#fff1c4';
+      context.beginPath();
+      context.arc(x, y, 2.5, 0, Math.PI * 2);
       context.fill();
     });
 
