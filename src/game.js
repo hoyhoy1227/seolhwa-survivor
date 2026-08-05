@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260802-4';
+const SPRITE_VERSION = '20260805-1';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
@@ -73,7 +73,8 @@ const CAMPAIGN = [
     enemyNames: ['도깨비 장사꾼', '각시 장난귀', '불씨 저승사자'],
     ground: 0x7f6949, path: 0xd0a568, accent: 0xff7a32, map: '#59472f',
     rangedChance: .12, hpScale: 1, speedScale: 1, damageScale: 1, spawnScale: 1, bossHpScale: 1,
-    hazard: 'embers', deviceName: '장터 불화로', deviceHint: '주기적으로 폭발해 주변의 모두를 태웁니다.'
+    hazard: 'embers', deviceName: '장터 불화로', deviceHint: '주기적으로 폭발해 주변의 모두를 태웁니다.',
+    traitName: '탐욕의 불씨', combatHint: '근거리 도깨비가 떼로 몰려옵니다. 화로가 붉게 달아오르면 폭발 범위에서 즉시 벗어나세요.'
   },
   {
     id: 'fox-pass', name: '여우고개', story: '아홉 꼬리의 환영이 달빛 고개를 뒤덮었습니다.',
@@ -81,7 +82,8 @@ const CAMPAIGN = [
     enemyNames: ['홀린 나그네', '여우 그림자', '환영 무당'],
     ground: 0x624c6a, path: 0xb8899e, accent: 0xff6575, map: '#49364f',
     rangedChance: .28, hpScale: 1.12, speedScale: 1.08, damageScale: 1.05, spawnScale: .88, bossHpScale: 1.25,
-    hazard: 'illusions', deviceName: '여우 안개석', deviceHint: '안개 안에서는 이동이 느려지고 환영이 몰려옵니다.'
+    hazard: 'illusions', deviceName: '여우 안개석', deviceHint: '안개 안에서는 이동이 느려지고 환영이 몰려옵니다.',
+    traitName: '홀리는 안개', combatHint: '환영과 원거리 공격이 늘어납니다. 안개석 주변에 오래 머물지 말고 빈 공간을 확보하세요.'
   },
   {
     id: 'golden-gate', name: '해치의 금문', story: '정의를 지키던 금문이 쇠를 먹는 괴수에게 무너지고 있습니다.',
@@ -89,7 +91,8 @@ const CAMPAIGN = [
     enemyNames: ['철갑 요괴', '금문 수문귀', '쇳조각 술사'],
     ground: 0x75623d, path: 0xd7bb6b, accent: 0xffca55, map: '#514728',
     rangedChance: .16, hpScale: 1.34, speedScale: .94, damageScale: 1.15, spawnScale: .77, bossHpScale: 1.55,
-    hazard: 'shards', deviceName: '금문 수호진', deviceHint: '충전된 수호진이 주변 요괴를 밀어냅니다.'
+    hazard: 'shards', deviceName: '금문 수호진', deviceHint: '충전된 수호진이 주변 요괴를 밀어냅니다.',
+    traitName: '쇳조각 폭우', combatHint: '단단한 철갑 요괴와 낙하하는 쇳조각이 길을 막습니다. 수호진의 밀쳐내기를 방어선으로 활용하세요.'
   },
   {
     id: 'tiger-peak', name: '산군 봉우리', story: '뒤틀린 산바람이 봉우리의 수호령들을 사납게 만들었습니다.',
@@ -97,7 +100,8 @@ const CAMPAIGN = [
     enemyNames: ['산짐승 귀', '바람 각시', '절벽 사냥꾼'],
     ground: 0x52634a, path: 0xa39467, accent: 0x9bd56b, map: '#33462f',
     rangedChance: .2, hpScale: 1.3, speedScale: 1.24, damageScale: 1.12, spawnScale: .67, bossHpScale: 1.9,
-    hazard: 'wind', deviceName: '산바람 돌탑', deviceHint: '돌탑의 바람길이 이동 방향을 강하게 밀어냅니다.'
+    hazard: 'wind', deviceName: '산바람 돌탑', deviceHint: '돌탑의 바람길이 이동 방향을 강하게 밀어냅니다.',
+    traitName: '거센 산바람', combatHint: '빠른 산짐승과 돌풍이 이동 경로를 흔듭니다. 바람 방향을 보고 절벽 쪽으로 밀리지 않게 움직이세요.'
   },
   {
     id: 'moon-palace', name: '처용의 달궁', story: '달궁에 역병의 춤이 번져 그림자들이 가면을 빼앗았습니다.',
@@ -105,7 +109,8 @@ const CAMPAIGN = [
     enemyNames: ['역병 탈귀', '저주받은 무희', '부적 술사'],
     ground: 0x4f4660, path: 0x897596, accent: 0x67d7e4, map: '#352d45',
     rangedChance: .34, hpScale: 1.45, speedScale: 1.12, damageScale: 1.24, spawnScale: .58, bossHpScale: 2.3,
-    hazard: 'plague', deviceName: '처용 정화 북', deviceHint: '북의 결계 안에서는 피해가 줄고 역병이 정화됩니다.'
+    hazard: 'plague', deviceName: '처용 정화 북', deviceHint: '북의 결계 안에서는 피해가 줄고 역병이 정화됩니다.',
+    traitName: '번지는 역병', combatHint: '저주 장판과 원거리 술사가 전장을 오염시킵니다. 위험할 때 정화 북의 결계 안에서 전열을 정비하세요.'
   },
   {
     id: 'underworld-road', name: '바리의 저승꽃길', story: '저승꽃길의 문이 닫히며 떠도는 혼들이 길을 잃었습니다.',
@@ -113,8 +118,18 @@ const CAMPAIGN = [
     enemyNames: ['길 잃은 혼', '저승 옥졸', '명부 술사'],
     ground: 0x30374d, path: 0x6e6688, accent: 0x78b9ff, map: '#20273c',
     rangedChance: .4, hpScale: 1.62, speedScale: 1.16, damageScale: 1.36, spawnScale: .5, bossHpScale: 2.75,
-    hazard: 'rifts', deviceName: '저승 영혼샘', deviceHint: '생명력을 회복하지만 정예 옥졸도 끌어들입니다.'
+    hazard: 'rifts', deviceName: '저승 영혼샘', deviceHint: '생명력을 회복하지만 정예 옥졸도 끌어들입니다.',
+    traitName: '갈라진 저승길', combatHint: '차원의 균열과 원거리 혼령이 끊임없이 압박합니다. 영혼샘의 회복과 정예 소환 위험을 함께 계산하세요.'
   }
+];
+
+const CHAPTER_DEVICE_SPRITES = [
+  'device-brazier.png',
+  'device-mist-stone.png',
+  'device-golden-seal.png',
+  'device-wind-totem.png',
+  'device-moon-drum.png',
+  'device-soul-well.png'
 ];
 
 const EMBEDDED_TEXTURE_FILES = Object.freeze({
@@ -471,6 +486,18 @@ const ui = {
   how: document.getElementById('how-screen'),
   characters: document.getElementById('character-screen'),
   characterGrid: document.getElementById('character-grid'),
+  story: document.getElementById('story-screen'),
+  storyPanel: document.getElementById('story-panel'),
+  storyKicker: document.getElementById('story-kicker'),
+  storyHeading: document.getElementById('story-heading'),
+  storyVisual: document.getElementById('story-visual'),
+  storyPortrait: document.getElementById('story-portrait'),
+  storyFigureLabel: document.getElementById('story-figure-label'),
+  storyNarrative: document.getElementById('story-narrative'),
+  storyObjective: document.getElementById('story-objective'),
+  storyDetails: document.getElementById('story-details'),
+  storyBack: document.getElementById('story-back'),
+  storyContinue: document.getElementById('story-continue'),
   hud: document.getElementById('hud'),
   heroName: document.getElementById('hero-name'),
   hpFill: document.getElementById('hp-fill'),
@@ -503,6 +530,7 @@ const ui = {
 };
 
 let toastTimer = null;
+let pendingIntroCharacter = null;
 
 function showToast(message, duration = 2200) {
   ui.toast.textContent = message;
@@ -515,12 +543,74 @@ function hideScreens() {
   ui.title.classList.add('hidden');
   ui.how.classList.add('hidden');
   ui.characters.classList.add('hidden');
+  ui.story.classList.add('hidden');
   ui.choice.classList.add('hidden');
   ui.pause.classList.add('hidden');
 }
 
 function currentScene() {
   return window.game?.scene.getScene('GameScene');
+}
+
+function renderStoryDetails(details) {
+  ui.storyDetails.innerHTML = '';
+  details.forEach(({ label, text }) => {
+    const card = document.createElement('div');
+    card.className = 'story-detail-card';
+    const heading = document.createElement('b');
+    heading.textContent = label;
+    const copy = document.createElement('span');
+    copy.textContent = text;
+    card.append(heading, copy);
+    ui.storyDetails.appendChild(card);
+  });
+}
+
+function showCampaignIntro(character) {
+  const firstChapter = CAMPAIGN[0];
+  pendingIntroCharacter = character;
+  hideScreens();
+  ui.hud.classList.add('hidden');
+  ui.story.dataset.mode = 'intro';
+  ui.storyPanel.style.setProperty('--story-accent', character.accent);
+  ui.storyKicker.textContent = 'PROLOGUE · 여섯 설화의 붕괴';
+  ui.storyHeading.textContent = '잊힌 설화가 깨어난 밤';
+  ui.storyVisual.dataset.kind = 'hero';
+  ui.storyPortrait.src = spriteUrl(`${character.id}.png`);
+  ui.storyPortrait.alt = `${character.name} 캐릭터`;
+  ui.storyFigureLabel.textContent = `${character.name} · ${character.role}`;
+  ui.storyNarrative.textContent = '사람들이 옛이야기를 잊기 시작하자, 여섯 설화의 경계가 무너졌습니다. 탐욕의 불길과 여우의 환영, 쇳조각의 폭우, 뒤틀린 산바람, 역병의 춤과 저승의 균열이 이야기 속 세상을 삼키고 있습니다.\n\n설화가 완전히 사라지기 전, 선택받은 수호자만이 밤을 건너 이야기를 되돌릴 수 있습니다.';
+  ui.storyObjective.textContent = `${character.name}의 힘으로 낮 동안 성장하고 밤의 보스를 쓰러뜨리세요. 열린 포탈을 통과해 여섯 설화를 모두 구하면 이야기가 완성됩니다.`;
+  renderStoryDetails([
+    { label: '선택한 수호자', text: `${character.name} · ${character.attack} — ${character.description}` },
+    { label: '여정의 목표', text: '각 설화의 밤 보스를 처치하고 포탈을 통과해 총 6개의 세계를 복원합니다.' },
+    { label: '첫 번째 설화', text: `${firstChapter.name} · ${firstChapter.deviceName}을 경계하며 ${firstChapter.bossName}에게 맞서세요.` }
+  ]);
+  ui.storyBack.classList.remove('hidden');
+  ui.storyContinue.textContent = '첫 설화로 출발';
+  ui.story.classList.remove('hidden');
+}
+
+function showChapterBriefing(scene, chapter) {
+  const chapterNumber = scene.chapterIndex + 1;
+  ui.story.dataset.mode = 'chapter';
+  ui.storyPanel.style.setProperty('--story-accent', `#${chapter.accent.toString(16).padStart(6, '0')}`);
+  ui.storyKicker.textContent = `FOLKLORE ${chapterNumber} / ${CAMPAIGN.length}`;
+  ui.storyHeading.textContent = `${chapter.name}에 도착했습니다`;
+  ui.storyVisual.dataset.kind = 'device';
+  ui.storyPortrait.src = spriteUrl(CHAPTER_DEVICE_SPRITES[scene.chapterIndex]);
+  ui.storyPortrait.alt = `${chapter.deviceName} 장치`;
+  ui.storyFigureLabel.textContent = chapter.deviceName;
+  ui.storyNarrative.textContent = `${chapter.story}\n\n이곳의 지형과 요괴는 이전 설화와 다른 방식으로 움직입니다. 아래 안내를 확인한 뒤 전투를 시작하세요.`;
+  ui.storyObjective.textContent = `낮 동안 힘을 모으고, 밤에 나타나는 ${chapter.bossName}을 쓰러뜨려 다음 설화의 포탈을 여세요.`;
+  renderStoryDetails([
+    { label: `맵 특성 · ${chapter.traitName}`, text: chapter.combatHint },
+    { label: `지형 장치 · ${chapter.deviceName}`, text: chapter.deviceHint },
+    { label: `밤의 보스 · ${chapter.bossName}`, text: '해가 완전히 지면 등장합니다. 보스 처치 후 경험치가 모두 회수되고 다음 포탈이 열립니다.' }
+  ]);
+  ui.storyBack.classList.add('hidden');
+  ui.storyContinue.textContent = '안내 확인 · 전투 시작';
+  ui.story.classList.remove('hidden');
 }
 
 function buildCharacterCards() {
@@ -537,9 +627,7 @@ function buildCharacterCards() {
     `;
     card.addEventListener('click', () => {
       audio.click();
-      hideScreens();
-      ui.hud.classList.remove('hidden');
-      window.game.scene.start('GameScene', { character });
+      showCampaignIntro(character);
     });
     ui.characterGrid.appendChild(card);
   });
@@ -547,6 +635,7 @@ function buildCharacterCards() {
 
 function showTitle() {
   audio.stopBgm();
+  pendingIntroCharacter = null;
   window.clearTimeout(toastTimer);
   ui.toast.classList.remove('show');
   ui.toast.textContent = '';
@@ -590,6 +679,28 @@ document.getElementById('selection-back').addEventListener('click', () => {
   audio.click();
   ui.characters.classList.add('hidden');
   ui.title.classList.remove('hidden');
+});
+
+ui.storyBack.addEventListener('click', () => {
+  audio.click();
+  pendingIntroCharacter = null;
+  ui.story.classList.add('hidden');
+  ui.characters.classList.remove('hidden');
+});
+
+ui.storyContinue.addEventListener('click', () => {
+  audio.click();
+  if (ui.story.dataset.mode === 'intro') {
+    const character = pendingIntroCharacter;
+    if (!character) return;
+    pendingIntroCharacter = null;
+    hideScreens();
+    ui.hud.classList.remove('hidden');
+    window.game.scene.start('GameScene', { character });
+    return;
+  }
+  ui.story.classList.add('hidden');
+  currentScene()?.resumeChapterBriefing();
 });
 
 document.getElementById('pause-button').addEventListener('click', () => currentScene()?.togglePause());
@@ -1506,6 +1617,11 @@ class GameScene extends Phaser.Scene {
       if (!orb.active) return;
       const distance = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
       const vacuum = this.experienceVacuumActive || orb.getData('vacuum');
+      const vacuumAge = this.time.now - (orb.getData('vacuumStartedAt') || this.time.now);
+      if (vacuum && (distance <= 28 || vacuumAge >= 5000)) {
+        this.collectOrb(this.player, orb);
+        return;
+      }
       if (vacuum || distance <= this.stats.pickupRadius) {
         this.physics.moveToObject(orb, this.player, vacuum ? 1180 : (250 + this.stats.pickupRadius) * this.stats.pickupSpeed);
       } else {
@@ -2380,6 +2496,7 @@ class GameScene extends Phaser.Scene {
       orb.setData('vacuum', true);
       orb.setTint(index % 2 ? 0xfff0a3 : 0xaee7ff);
       orb.setData('spawnedAt', this.time.now);
+      orb.setData('vacuumStartedAt', this.time.now);
     });
     this.updatePortalGuide();
     audio.tone(520, .38, 'sine', .035);
@@ -2446,6 +2563,7 @@ class GameScene extends Phaser.Scene {
     }
     this.state = 'transition';
     this.physics.pause();
+    audio.stopBgm();
     this.chapterIndex += 1;
     this.elapsed = 0;
     this.chapterKills = 0;
@@ -2469,12 +2587,19 @@ class GameScene extends Phaser.Scene {
     audio.setNight(false);
     audio.portal();
     const chapter = CAMPAIGN[this.chapterIndex];
-    showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name}: ${chapter.story} 지형 장치: ${chapter.deviceName}`, 5600);
-    this.time.delayedCall(720, () => {
-      if (!this.player?.active) return;
-      this.physics.resume();
-      this.state = 'running';
-    });
+    showChapterBriefing(this, chapter);
+  }
+
+  resumeChapterBriefing() {
+    if (!this.player?.active || this.state !== 'transition') return;
+    const chapter = CAMPAIGN[this.chapterIndex];
+    this.nextSpawnAt = this.time.now + 1000;
+    this.nextHazardAt = this.time.now + 6500;
+    this.nextAttackAt = this.time.now + 350;
+    this.physics.resume();
+    this.state = 'running';
+    audio.startBgm();
+    showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name} 전투 시작`, 2600);
   }
 
   completeCampaign() {
@@ -2512,7 +2637,7 @@ class GameScene extends Phaser.Scene {
       this.pendingLevels += 1;
     }
 
-    if (this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
+    if (this.pendingLevels > 0 && this.state === 'running' && !this.experienceVacuumActive) this.offerChoices(false);
   }
 
   spawnChest(forcedX, forcedY) {

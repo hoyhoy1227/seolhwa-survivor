@@ -480,6 +480,145 @@
       text-align: center;
     }
 
+    .story-panel {
+      --story-accent: #f0b94f;
+      position: relative;
+      width: min(900px, 95vw);
+      max-height: 92vh;
+      overflow: auto;
+      padding: clamp(24px, 4vw, 42px);
+      border-color: color-mix(in srgb, var(--story-accent) 58%, transparent);
+      background:
+        radial-gradient(circle at 17% 28%, color-mix(in srgb, var(--story-accent) 15%, transparent), transparent 29%),
+        linear-gradient(135deg, rgba(255,255,255,.035), transparent 48%),
+        rgba(5, 7, 14, .96);
+      box-shadow: 0 32px 110px #000, inset 0 0 90px color-mix(in srgb, var(--story-accent) 5%, transparent);
+      text-align: left;
+    }
+
+    .story-panel::before,
+    .story-panel::after {
+      content: "";
+      position: absolute;
+      top: 14px;
+      width: 74px;
+      height: 1px;
+      background: var(--story-accent);
+      box-shadow: 0 6px color-mix(in srgb, var(--story-accent) 44%, transparent);
+    }
+
+    .story-panel::before { left: 16px; }
+    .story-panel::after { right: 16px; }
+    .story-panel .eyebrow { text-align: center; color: var(--story-accent); }
+
+    .story-main {
+      display: grid;
+      grid-template-columns: minmax(170px, 220px) 1fr;
+      align-items: center;
+      gap: clamp(20px, 4vw, 42px);
+      margin: 24px 0;
+    }
+
+    .story-visual {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      border: 1px solid color-mix(in srgb, var(--story-accent) 35%, transparent);
+      background: radial-gradient(circle, color-mix(in srgb, var(--story-accent) 18%, transparent), rgba(0,0,0,.12) 67%);
+    }
+
+    .story-visual::after {
+      content: "";
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      left: 14px;
+      height: 20px;
+      border: 1px solid color-mix(in srgb, var(--story-accent) 38%, transparent);
+      border-top: 0;
+      opacity: .72;
+    }
+
+    #story-portrait {
+      width: 190px;
+      height: 190px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 18px 12px rgba(0,0,0,.58));
+    }
+
+    #story-visual[data-kind="device"] #story-portrait { width: 170px; height: 170px; }
+
+    #story-figure-label {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      left: 12px;
+      z-index: 2;
+      color: #fff0c8;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-align: center;
+      text-shadow: 0 2px 4px #000;
+    }
+
+    .story-narrative {
+      margin: 0;
+      color: #e7ddca;
+      font-family: "Batang", "Noto Serif KR", serif;
+      font-size: clamp(15px, 2vw, 18px);
+      line-height: 1.9;
+      white-space: pre-line;
+    }
+
+    .story-objective {
+      margin: 18px 0 0;
+      padding: 12px 15px;
+      border-left: 3px solid var(--story-accent);
+      background: rgba(255,255,255,.045);
+      color: #f6d993;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.65;
+    }
+
+    .story-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0;
+    }
+
+    .story-detail-card {
+      min-height: 104px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.032);
+    }
+
+    .story-detail-card b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--story-accent);
+      font-size: 11px;
+      letter-spacing: .12em;
+    }
+
+    .story-detail-card span {
+      color: #d8cfbf;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .story-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: min(520px, 100%);
+    }
+
+    .story-actions .game-button:only-child { grid-column: 1 / -1; }
+
     #choice-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -553,6 +692,12 @@
       #minimap-panel { width: 174px; }
       #minimap { width: 156px; height: 99px; }
       .control-grid { grid-template-columns: 1fr; }
+      .story-main { grid-template-columns: 145px 1fr; gap: 18px; }
+      .story-visual { min-height: 170px; }
+      #story-portrait { width: 145px; height: 145px; }
+      #story-visual[data-kind="device"] #story-portrait { width: 132px; height: 132px; }
+      .story-detail-grid { grid-template-columns: 1fr; }
+      .story-detail-card { min-height: 0; }
     }
 
     @media (max-width: 470px) {
@@ -572,6 +717,12 @@
       #minimap { width: 134px; height: 85px; }
       #treasure-hint { max-width: 92px; }
       .bar-row { grid-template-columns: 24px 1fr 52px; }
+      .story-main { grid-template-columns: 1fr; }
+      .story-visual { min-height: 142px; }
+      #story-portrait { width: 132px; height: 132px; }
+      #story-visual[data-kind="device"] #story-portrait { width: 120px; height: 120px; }
+      .story-narrative { font-size: 14px; line-height: 1.75; }
+      .story-actions { grid-template-columns: 1fr; }
     }
 
     @media (max-height: 680px) {
@@ -662,6 +813,28 @@
     </div>
   </section>
 
+  <section id="story-screen" class="screen hidden" aria-labelledby="story-heading">
+    <div id="story-panel" class="modal-panel story-panel">
+      <p id="story-kicker" class="eyebrow">PROLOGUE</p>
+      <h2 id="story-heading" class="section-heading">잊힌 설화가 깨어난 밤</h2>
+      <div class="story-main">
+        <div id="story-visual" class="story-visual" data-kind="hero">
+          <img id="story-portrait" src="" alt="" />
+          <span id="story-figure-label"></span>
+        </div>
+        <div>
+          <p id="story-narrative" class="story-narrative"></p>
+          <p id="story-objective" class="story-objective"></p>
+        </div>
+      </div>
+      <div id="story-details" class="story-detail-grid"></div>
+      <div class="menu-actions story-actions">
+        <button id="story-back" class="game-button secondary">수호자 다시 선택</button>
+        <button id="story-continue" class="game-button">첫 설화로 출발</button>
+      </div>
+    </div>
+  </section>
+
   <div id="toast"></div>
 
   <section id="choice-screen" class="screen hidden">
@@ -685,8 +858,8 @@
     </div>
   </section>
 
-  <script src="./src/sprite-data.js?v=20260802-4"></script>
+  <script src="./src/sprite-data.js?v=20260805-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260802-4"></script>
+  <script src="./src/game.js?v=20260805-1"></script>
 </body>
 </html>
