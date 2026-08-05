@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-6';
+const SPRITE_VERSION = '20260805-7';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -2266,7 +2266,6 @@ class GameScene extends Phaser.Scene {
     this.createImpactBurst(origin.x, origin.y, 0xffee70, 18);
     this.damageEnemy(origin, damage, { color: 0xffee70 });
     this.chainDamage(origin, damage, jumps);
-    this.cameras.main.flash(55, 255, 244, 170, false);
     audio.tone(960, .07, 'square', .025);
   }
 
