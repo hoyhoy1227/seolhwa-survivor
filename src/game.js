@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-7';
+const SPRITE_VERSION = '20260805-8';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -1797,7 +1797,6 @@ class GameScene extends Phaser.Scene {
     if (shadow?.active) shadow.setScale(1.35, 1.35).setAlpha(.56);
     this.createDevicePulse(enemy.x, enemy.y, chapter.accent, 92);
     this.cameras.main.shake(260, .005);
-    showToast(`${order + 1}번째 중간 수호자가 나타났습니다!`, 2800);
   }
 
   fireEnemyProjectile(enemy) {
