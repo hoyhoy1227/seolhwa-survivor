@@ -2,9 +2,10 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-4';
+const SPRITE_VERSION = '20260805-5';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
+const MID_BOSS_TIMES = [18, 38];
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
@@ -1248,12 +1249,14 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
+    this.levelTenTreasureSpawned = false;
     this.nextChestAt = 22;
     this.chapterIndex = 0;
     this.chapterKills = 0;
     this.totalElapsed = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
+    this.midBossesSpawned = 0;
     this.bossExperienceCollectionActive = false;
     this.lastBossOrbAudioAt = 0;
     this.activeBoss = null;
@@ -1315,6 +1318,10 @@ class GameScene extends Phaser.Scene {
     this.updateSecondaryWeapons(time);
     this.updateStageHazards(time);
 
+    if (this.midBossesSpawned < MID_BOSS_TIMES.length && this.elapsed >= MID_BOSS_TIMES[this.midBossesSpawned] && !this.bossSpawned) {
+      this.spawnMidBoss(this.midBossesSpawned);
+      this.midBossesSpawned += 1;
+    }
     if (this.elapsed >= NIGHT_START && !this.bossSpawned) this.spawnBoss();
 
     if (time >= this.nextAttackAt) {
@@ -1774,6 +1781,29 @@ class GameScene extends Phaser.Scene {
     const baseTint = elite ? 0xf0a33a : chapterTints[this.chapterIndex];
     enemy.setData('baseTint', baseTint);
     enemy.setTint(baseTint);
+    return enemy;
+  }
+
+  spawnMidBoss(order) {
+    const enemy = this.spawnEnemy(true);
+    if (!enemy?.active) return;
+    const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
+    const sizeScale = 1.24;
+    enemy.isMidBoss = true;
+    enemy.setDisplaySize(enemy.displayWidth * sizeScale, enemy.displayHeight * sizeScale).setDepth(22);
+    enemy.hp *= 3.4 + this.chapterIndex * .3;
+    enemy.maxHp = enemy.hp;
+    enemy.damage *= 1.38;
+    enemy.speed *= .9;
+    enemy.xpValue = 18 + this.chapterIndex * 4;
+    enemy.setData('folkName', `${order + 1}번째 중간 수호자 · ${enemy.getData('folkName')}`);
+    enemy.setData('baseTint', 0xffb44f);
+    enemy.setTint(0xffb44f);
+    const shadow = enemy.getData('shadow');
+    if (shadow?.active) shadow.setScale(1.35, 1.35).setAlpha(.56);
+    this.createDevicePulse(enemy.x, enemy.y, chapter.accent, 92);
+    this.cameras.main.shake(260, .005);
+    showToast(`${order + 1}번째 중간 수호자가 나타났습니다!`, 2800);
   }
 
   fireEnemyProjectile(enemy) {
@@ -2466,13 +2496,14 @@ class GameScene extends Phaser.Scene {
       this.defeatBoss(enemy);
       return;
     }
-    const { x, y, xpValue, elite } = enemy;
+    const { x, y, xpValue, elite, isMidBoss } = enemy;
     enemy.getData('shadow')?.destroy();
     enemy.destroy();
     this.kills += 1;
     this.chapterKills += 1;
     this.spawnExperienceOrbs(x, y, xpValue, elite ? 3 : 1, elite ? 15 : 11);
-    if (Math.random() < .012 && this.chests.countActive(true) === 0) this.spawnChest(x, y);
+    if (isMidBoss) this.spawnChest(x, y, true);
+    else if (Math.random() < .012 && this.chests.countActive(true) === 0) this.spawnChest(x, y);
   }
 
   defeatBoss(boss) {
@@ -2489,7 +2520,6 @@ class GameScene extends Phaser.Scene {
     ui.bossPanel.classList.add('hidden');
     this.enemyProjectiles.clear(true, true);
     this.projectiles.clear(true, true);
-    this.chests.clear(true, true);
     this.hazardZones.forEach(zone => {
       zone.visual?.destroy();
       zone.rune?.destroy();
@@ -2508,14 +2538,15 @@ class GameScene extends Phaser.Scene {
     this.chapterKills += remainingEnemyCount;
     this.spawnExperienceOrbs(x, y, bossXp, 6, 16, 42);
     this.beginBossExperienceCollection();
-    this.spawnPortal(x, y);
+    this.spawnPortal(x + 132, y);
+    this.spawnChest(x, y, true);
     audio.portal();
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
     for (let index = 0; index < 6; index += 1) {
       this.time.delayedCall(index * 90, () => this.createImpactBurst(x + Phaser.Math.Between(-70, 70), y + Phaser.Math.Between(-70, 70), chapter.accent, 42));
     }
-    showToast(`${chapter.bossName} 처치!`, 2400);
+    showToast(`${chapter.bossName} 처치! 보물이 나타났습니다.`, 3000);
   }
 
   beginBossExperienceCollection() {
@@ -2535,15 +2566,6 @@ class GameScene extends Phaser.Scene {
     if (!this.bossExperienceCollectionActive) return;
     this.bossExperienceCollectionActive = false;
     if (this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
-  }
-
-  settleBossExperienceBeforePortal() {
-    if (!this.bossExperienceCollectionActive) return;
-    const remainingOrbs = this.orbs.getChildren().filter(orb => orb.active && orb.getData('bossVacuum'));
-    const remainingExperience = remainingOrbs.reduce((sum, orb) => sum + (orb.value || 1), 0);
-    remainingOrbs.forEach(orb => orb.destroy());
-    this.bossExperienceCollectionActive = false;
-    if (remainingExperience > 0) this.addExperience(remainingExperience, false);
   }
 
   spawnPortal(x, y) {
@@ -2590,7 +2612,7 @@ class GameScene extends Phaser.Scene {
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
-    this.settleBossExperienceBeforePortal();
+    const carryBossExperience = this.bossExperienceCollectionActive;
     this.destroyPortalGuide(portal);
     portal.destroy();
     if (this.chapterIndex >= CAMPAIGN.length - 1) {
@@ -2605,13 +2627,13 @@ class GameScene extends Phaser.Scene {
     this.chapterKills = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
-    this.bossExperienceCollectionActive = false;
+    this.midBossesSpawned = 0;
     this.activeBoss = null;
     this.nextChestAt = 20;
     this.nextSpawnAt = this.time.now + 1600;
     this.nextHazardAt = this.time.now + 6500;
     this.chests.clear(true, true);
-    this.orbs.clear(true, true);
+    if (!carryBossExperience) this.orbs.clear(true, true);
     this.projectiles.clear(true, true);
     this.hazardZones.forEach(zone => zone.visual?.destroy());
     this.hazardZones.forEach(zone => zone.rune?.destroy());
@@ -2636,7 +2658,7 @@ class GameScene extends Phaser.Scene {
     this.state = 'running';
     audio.startBgm();
     showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name} 전투 시작`, 2600);
-    if (this.pendingLevels > 0) this.time.delayedCall(80, () => {
+    if (this.pendingLevels > 0 && !this.bossExperienceCollectionActive) this.time.delayedCall(80, () => {
       if (this.state === 'running') this.offerChoices(false);
     });
   }
@@ -2668,6 +2690,7 @@ class GameScene extends Phaser.Scene {
   }
 
   addExperience(amount, offerLevelChoice = true) {
+    const previousLevel = this.level;
     this.xp += Math.max(0, amount);
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
@@ -2675,12 +2698,25 @@ class GameScene extends Phaser.Scene {
       this.xpNeeded = experienceRequired(this.level);
       this.pendingLevels += 1;
     }
+    if (!this.levelTenTreasureSpawned && previousLevel < 10 && this.level >= 10) {
+      this.levelTenTreasureSpawned = true;
+      this.spawnLevelTreasureNearby();
+    }
     this.updateHud();
     if (offerLevelChoice && this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
   }
 
-  spawnChest(forcedX, forcedY) {
-    if (this.bossDefeated || this.chests.countActive(true) > 0) return;
+  spawnLevelTreasureNearby() {
+    if (!this.player?.active) return;
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const distance = Phaser.Math.Between(145, 210);
+    const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * distance, 90, WORLD_WIDTH - 90);
+    const y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * distance, 90, WORLD_HEIGHT - 90);
+    this.spawnChest(x, y, true);
+  }
+
+  spawnChest(forcedX, forcedY, guaranteed = false) {
+    if (!guaranteed && (this.bossDefeated || this.chests.countActive(true) > 0)) return;
     const chestAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const x = forcedX ?? Phaser.Math.Clamp(
       this.player.x + Math.cos(chestAngle) * Phaser.Math.Between(210, 330),
@@ -3002,7 +3038,7 @@ class GameScene extends Phaser.Scene {
     if (!chest?.active || !this.player?.active) return '보물 없음';
     const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, chest.x, chest.y);
     const octant = Math.round((angle + Math.PI * 2) / (Math.PI / 4)) % 8;
-    const directions = ['동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽', '북쪽', '북동쪽'];
+    const directions = ['동쪽', '동남쪽', '남쪽', '서남쪽', '서쪽', '서북쪽', '북쪽', '동북쪽'];
     const distance = Math.round(Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) / 10) * 10;
     return `보물 ${directions[octant]} · ${distance}걸음`;
   }
