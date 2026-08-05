@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-3';
+const SPRITE_VERSION = '20260805-4';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
@@ -1255,7 +1255,6 @@ class GameScene extends Phaser.Scene {
     this.bossSpawned = false;
     this.bossDefeated = false;
     this.bossExperienceCollectionActive = false;
-    this.pendingPortalPosition = null;
     this.lastBossOrbAudioAt = 0;
     this.activeBoss = null;
     this.attackSequence = 0;
@@ -2508,7 +2507,9 @@ class GameScene extends Phaser.Scene {
     this.kills += remainingEnemyCount;
     this.chapterKills += remainingEnemyCount;
     this.spawnExperienceOrbs(x, y, bossXp, 6, 16, 42);
-    this.beginBossExperienceCollection(x, y);
+    this.beginBossExperienceCollection();
+    this.spawnPortal(x, y);
+    audio.portal();
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
     for (let index = 0; index < 6; index += 1) {
@@ -2517,10 +2518,9 @@ class GameScene extends Phaser.Scene {
     showToast(`${chapter.bossName} 처치!`, 2400);
   }
 
-  beginBossExperienceCollection(portalX, portalY) {
+  beginBossExperienceCollection() {
     const orbs = this.orbs.getChildren().filter(orb => orb.active);
     this.bossExperienceCollectionActive = true;
-    this.pendingPortalPosition = { x: portalX, y: portalY };
     orbs.forEach((orb, index) => {
       orb.setData('bossVacuum', true);
       orb.clearTint();
@@ -2534,12 +2534,16 @@ class GameScene extends Phaser.Scene {
   finishBossExperienceCollection() {
     if (!this.bossExperienceCollectionActive) return;
     this.bossExperienceCollectionActive = false;
-    const portalPosition = this.pendingPortalPosition;
-    this.pendingPortalPosition = null;
-    if (portalPosition) this.spawnPortal(portalPosition.x, portalPosition.y);
-    audio.portal();
-    showToast('포탈이 열렸습니다. 안으로 들어가세요.', 3400);
     if (this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
+  }
+
+  settleBossExperienceBeforePortal() {
+    if (!this.bossExperienceCollectionActive) return;
+    const remainingOrbs = this.orbs.getChildren().filter(orb => orb.active && orb.getData('bossVacuum'));
+    const remainingExperience = remainingOrbs.reduce((sum, orb) => sum + (orb.value || 1), 0);
+    remainingOrbs.forEach(orb => orb.destroy());
+    this.bossExperienceCollectionActive = false;
+    if (remainingExperience > 0) this.addExperience(remainingExperience, false);
   }
 
   spawnPortal(x, y) {
@@ -2586,6 +2590,7 @@ class GameScene extends Phaser.Scene {
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
+    this.settleBossExperienceBeforePortal();
     this.destroyPortalGuide(portal);
     portal.destroy();
     if (this.chapterIndex >= CAMPAIGN.length - 1) {
@@ -2601,7 +2606,6 @@ class GameScene extends Phaser.Scene {
     this.bossSpawned = false;
     this.bossDefeated = false;
     this.bossExperienceCollectionActive = false;
-    this.pendingPortalPosition = null;
     this.activeBoss = null;
     this.nextChestAt = 20;
     this.nextSpawnAt = this.time.now + 1600;
@@ -2632,6 +2636,9 @@ class GameScene extends Phaser.Scene {
     this.state = 'running';
     audio.startBgm();
     showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name} 전투 시작`, 2600);
+    if (this.pendingLevels > 0) this.time.delayedCall(80, () => {
+      if (this.state === 'running') this.offerChoices(false);
+    });
   }
 
   completeCampaign() {
@@ -2966,7 +2973,7 @@ class GameScene extends Phaser.Scene {
 
     if (this.bossDefeated) {
       ui.sunsetLabel.textContent = '보스 처치 완료';
-      ui.sunsetCountdown.textContent = this.bossExperienceCollectionActive ? '승리' : '포탈로 이동';
+      ui.sunsetCountdown.textContent = '포탈로 이동';
       ui.sunClockHand.style.background = '#a9d8ff';
       ui.sunClockHand.style.boxShadow = '0 0 9px #7457df';
     } else if (this.elapsed < NIGHT_START) {
@@ -2987,9 +2994,7 @@ class GameScene extends Phaser.Scene {
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
     ui.chapterLabel.textContent = `설화 ${this.chapterIndex + 1} / ${CAMPAIGN.length}`;
     ui.chapterName.textContent = this.bossDefeated
-      ? this.bossExperienceCollectionActive
-        ? `${chapter.name} · 보스 처치 완료`
-        : `${chapter.name} · 포탈 안으로 들어가세요`
+      ? `${chapter.name} · 포탈 안으로 들어가세요`
       : `${chapter.name} · ${chapter.bossName}`;
   }
 
