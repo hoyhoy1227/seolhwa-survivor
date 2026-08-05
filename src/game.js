@@ -2,12 +2,14 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-1';
+const SPRITE_VERSION = '20260805-2';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
+
+const experienceRequired = level => Math.round(11 + level * 6 + level * level * .65);
 
 const CHARACTERS = [
   {
@@ -319,7 +321,7 @@ const SKILLS = [
     apply: scene => { scene.stats.frost += 1; }
   },
   {
-    id: 'wide-sleeve', icon: '🪭', title: '선녀의 넓은 소매',
+    id: 'wide-sleeve', icon: '🪭', title: '선녀의 날개옷',
     description: '공격 범위와 폭발 범위가 25% 넓어집니다.',
     apply: scene => { scene.stats.areaScale *= 1.25; }
   },
@@ -606,7 +608,7 @@ function showChapterBriefing(scene, chapter) {
   renderStoryDetails([
     { label: `맵 특성 · ${chapter.traitName}`, text: chapter.combatHint },
     { label: `지형 장치 · ${chapter.deviceName}`, text: chapter.deviceHint },
-    { label: `밤의 보스 · ${chapter.bossName}`, text: '해가 완전히 지면 등장합니다. 보스 처치 후 경험치가 모두 회수되고 다음 포탈이 열립니다.' }
+    { label: `밤의 보스 · ${chapter.bossName}`, text: '해가 완전히 지면 등장합니다. 보스 처치 즉시 전장의 경험치를 얻고 다음 포탈이 열립니다.' }
   ]);
   ui.storyBack.classList.add('hidden');
   ui.storyContinue.textContent = '안내 확인 · 전투 시작';
@@ -1246,7 +1248,7 @@ class GameScene extends Phaser.Scene {
     };
     this.level = 1;
     this.xp = 0;
-    this.xpNeeded = 18;
+    this.xpNeeded = experienceRequired(this.level);
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
@@ -1256,9 +1258,6 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
-    this.experienceVacuumActive = false;
-    this.nextPortalNoticeAt = 0;
-    this.lastVacuumAudioAt = 0;
     this.activeBoss = null;
     this.attackSequence = 0;
     this.nextSpawnAt = this.time.now + 1200;
@@ -1616,14 +1615,8 @@ class GameScene extends Phaser.Scene {
     this.orbs.getChildren().forEach(orb => {
       if (!orb.active) return;
       const distance = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
-      const vacuum = this.experienceVacuumActive || orb.getData('vacuum');
-      const vacuumAge = this.time.now - (orb.getData('vacuumStartedAt') || this.time.now);
-      if (vacuum && (distance <= 28 || vacuumAge >= 5000)) {
-        this.collectOrb(this.player, orb);
-        return;
-      }
-      if (vacuum || distance <= this.stats.pickupRadius) {
-        this.physics.moveToObject(orb, this.player, vacuum ? 1180 : (250 + this.stats.pickupRadius) * this.stats.pickupSpeed);
+      if (distance <= this.stats.pickupRadius) {
+        this.physics.moveToObject(orb, this.player, (250 + this.stats.pickupRadius) * this.stats.pickupSpeed);
       } else {
         orb.setVelocity(0, 0);
       }
@@ -2466,13 +2459,7 @@ class GameScene extends Phaser.Scene {
       enemy.getData('shadow')?.destroy();
       enemy.destroy();
     });
-    for (let index = 0; index < 6; index += 1) {
-      const angle = index / 6 * Math.PI * 2;
-      const orb = this.orbs.create(x + Math.cos(angle) * 42, y + Math.sin(angle) * 42, 'xp-orb').setDepth(26);
-      orb.value = bossXp / 6;
-      orb.setData('spawnedAt', this.time.now);
-      orb.setDisplaySize(18, 18).setTint(0xffe88f);
-    }
+    this.collectAllExperienceImmediately(bossXp);
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
     for (let index = 0; index < 6; index += 1) {
@@ -2480,25 +2467,31 @@ class GameScene extends Phaser.Scene {
     }
     audio.portal();
     this.spawnPortal(x, y);
-    this.vacuumAllExperience();
-    showToast(`${chapter.bossName} 처치! 모든 요괴가 사라졌습니다. 정기를 회수한 뒤 포탈에 들어가세요.`, 5600);
+    showToast(`${chapter.bossName} 처치! 모든 요괴가 사라졌습니다. 포탈 안으로 들어가세요.`, 4600);
+    if (this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
   }
 
-  vacuumAllExperience() {
+  collectAllExperienceImmediately(bossExperience = 0) {
     const orbs = this.orbs.getChildren().filter(orb => orb.active);
-    if (!orbs.length) {
-      this.experienceVacuumActive = false;
-      this.updatePortalGuide();
-      return;
-    }
-    this.experienceVacuumActive = true;
-    orbs.forEach((orb, index) => {
-      orb.setData('vacuum', true);
-      orb.setTint(index % 2 ? 0xfff0a3 : 0xaee7ff);
-      orb.setData('spawnedAt', this.time.now);
-      orb.setData('vacuumStartedAt', this.time.now);
+    let totalExperience = bossExperience;
+    orbs.forEach(orb => {
+      totalExperience += orb.value || 1;
+      orb.destroy();
     });
-    this.updatePortalGuide();
+    this.addExperience(totalExperience, false);
+    const gainedText = this.add.text(this.player.x, this.player.y - 62, `+${Math.round(totalExperience)} EXP`, {
+      fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#bdeaff',
+      stroke: '#101829', strokeThickness: 5
+    }).setOrigin(.5).setDepth(210);
+    this.tweens.add({
+      targets: gainedText,
+      y: gainedText.y - 46,
+      alpha: 0,
+      duration: 900,
+      ease: 'Cubic.easeOut',
+      onComplete: () => gainedText.destroy()
+    });
+    audio.collect();
     audio.tone(520, .38, 'sine', .035);
     audio.tone(780, .42, 'triangle', .025, .12);
   }
@@ -2527,12 +2520,11 @@ class GameScene extends Phaser.Scene {
   }
 
   updatePortalGuide() {
-    const collecting = this.experienceVacuumActive || this.orbs?.countActive(true) > 0;
     this.portals?.getChildren().filter(portal => portal.active).forEach(portal => {
       const label = portal.getData('guideLabel');
-      if (label?.active) label.setText(collecting ? '전장의 정기 회수 중…' : '다음 설화로 이동\n포탈 안으로 들어가세요');
+      if (label?.active) label.setText('다음 설화로 이동\n포탈 안으로 들어가세요');
       const arrow = portal.getData('guideArrow');
-      if (arrow?.active) arrow.setFillStyle(collecting ? 0xaedfff : 0xffef9b, .95);
+      if (arrow?.active) arrow.setFillStyle(0xffef9b, .95);
     });
     this.updateChapterHud();
   }
@@ -2548,13 +2540,6 @@ class GameScene extends Phaser.Scene {
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
-    if (this.experienceVacuumActive || this.orbs.countActive(true) > 0) {
-      if (this.time.now >= this.nextPortalNoticeAt) {
-        this.nextPortalNoticeAt = this.time.now + 1600;
-        showToast('전장의 경험치를 회수하고 있습니다. 모두 모이면 포탈에 들어갈 수 있습니다.', 1500);
-      }
-      return;
-    }
     this.destroyPortalGuide(portal);
     portal.destroy();
     if (this.chapterIndex >= CAMPAIGN.length - 1) {
@@ -2569,7 +2554,6 @@ class GameScene extends Phaser.Scene {
     this.chapterKills = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
-    this.experienceVacuumActive = false;
     this.activeBoss = null;
     this.nextChestAt = 20;
     this.nextSpawnAt = this.time.now + 1600;
@@ -2615,29 +2599,22 @@ class GameScene extends Phaser.Scene {
 
   collectOrb(player, orb) {
     if (!orb?.active) return;
-    const vacuuming = this.experienceVacuumActive || orb.getData('vacuum');
-    this.xp += orb.value || 1;
+    const experience = orb.value || 1;
     orb.destroy();
-    if (!vacuuming || this.time.now - this.lastVacuumAudioAt >= 90) {
-      audio.collect();
-      this.lastVacuumAudioAt = this.time.now;
-    }
+    audio.collect();
+    this.addExperience(experience);
+  }
 
-    const vacuumComplete = vacuuming && this.orbs.countActive(true) === 0;
-    if (vacuumComplete) {
-      this.experienceVacuumActive = false;
-      this.updatePortalGuide();
-      showToast('전장의 모든 경험치를 회수했습니다. 포탈 안으로 들어가세요!', 3200);
-    }
-
+  addExperience(amount, offerLevelChoice = true) {
+    this.xp += Math.max(0, amount);
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
       this.level += 1;
-      this.xpNeeded = Math.round(17 + this.level * 8.5);
+      this.xpNeeded = experienceRequired(this.level);
       this.pendingLevels += 1;
     }
-
-    if (this.pendingLevels > 0 && this.state === 'running' && !this.experienceVacuumActive) this.offerChoices(false);
+    this.updateHud();
+    if (offerLevelChoice && this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
   }
 
   spawnChest(forcedX, forcedY) {
@@ -2912,7 +2889,7 @@ class GameScene extends Phaser.Scene {
     ui.hpFill.style.width = `${hpPercent}%`;
     ui.hpText.textContent = `${Math.max(0, Math.ceil(this.stats.hp))}/${Math.round(this.stats.maxHP)}`;
     ui.xpFill.style.width = `${xpPercent}%`;
-    ui.levelText.textContent = `LV ${this.level}`;
+    ui.levelText.textContent = `${Math.floor(this.xp)}/${this.xpNeeded} · LV ${this.level}`;
     const minutes = Math.floor(this.elapsed / 60).toString().padStart(2, '0');
     const seconds = Math.floor(this.elapsed % 60).toString().padStart(2, '0');
     ui.timer.textContent = `${minutes}:${seconds}`;
