@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-5';
+const SPRITE_VERSION = '20260805-6';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -773,7 +773,6 @@ class GameScene extends Phaser.Scene {
     this.kills = 0;
     this.pendingLevels = 0;
     this.nextAttackAt = 0;
-    this.nextChestAt = 22;
     this.nextSpawnAt = 0;
     this.nextHazardAt = 7000;
     this.nextAreaPulseAt = 0;
@@ -1249,8 +1248,6 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
-    this.levelTenTreasureSpawned = false;
-    this.nextChestAt = 22;
     this.chapterIndex = 0;
     this.chapterKills = 0;
     this.totalElapsed = 0;
@@ -1327,11 +1324,6 @@ class GameScene extends Phaser.Scene {
     if (time >= this.nextAttackAt) {
       this.autoAttack();
       this.nextAttackAt = time + this.stats.attackDelay;
-    }
-
-    if (this.elapsed >= this.nextChestAt) {
-      this.spawnChest();
-      this.nextChestAt += 37;
     }
 
     if (this.stats.regen > 0 && time - this.lastRegenAt >= 1000) {
@@ -1723,13 +1715,14 @@ class GameScene extends Phaser.Scene {
     const progress = Phaser.Math.Clamp(this.elapsed / NIGHT_START, 0, 1);
     const overtime = Phaser.Math.Clamp((this.elapsed - NIGHT_START) / 45, 0, .7);
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
-    const cap = Math.min(122, 30 + this.chapterIndex * 12 + Math.floor(progress * (42 + this.chapterIndex * 4) + overtime * 18));
+    const laterChapterPressure = 1 + this.chapterIndex * .18;
+    const cap = Math.min(150, 30 + this.chapterIndex * 18 + Math.floor(progress * (42 + this.chapterIndex * 5) + overtime * 18));
     if (this.enemies.countActive(true) >= cap) {
       this.nextSpawnAt = this.time.now + 320;
       return;
     }
-    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24);
-    const batch = 1 + Math.floor(progress * 2.65) + Math.floor(this.chapterIndex / 2) + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
+    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) / laterChapterPressure;
+    const batch = 1 + Math.floor(progress * 2.65) + Math.ceil(this.chapterIndex * .7) + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
     for (let index = 0; index < batch; index += 1) this.spawnEnemy(false);
     this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(360, interval * 1.08) : Math.max(180, interval));
   }
@@ -1791,9 +1784,10 @@ class GameScene extends Phaser.Scene {
     const sizeScale = 1.24;
     enemy.isMidBoss = true;
     enemy.setDisplaySize(enemy.displayWidth * sizeScale, enemy.displayHeight * sizeScale).setDepth(22);
-    enemy.hp *= 3.4 + this.chapterIndex * .3;
+    const laterChapter = this.chapterIndex === 0 ? 0 : this.chapterIndex;
+    enemy.hp *= 3.4 + laterChapter * .85;
     enemy.maxHp = enemy.hp;
-    enemy.damage *= 1.38;
+    enemy.damage *= 1.38 + laterChapter * .18;
     enemy.speed *= .9;
     enemy.xpValue = 18 + this.chapterIndex * 4;
     enemy.setData('folkName', `${order + 1}번째 중간 수호자 · ${enemy.getData('folkName')}`);
@@ -1866,9 +1860,11 @@ class GameScene extends Phaser.Scene {
     const boss = this.enemies.create(x, y, chapter.bossTexture).setDisplaySize(190, 190).setDepth(24);
     boss.body.setCircle(88, 40, 74);
     boss.kind = 'boss';
-    boss.hp = 1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55;
+    const laterBossHpScale = this.chapterIndex === 0 ? 1 : 1.18 + this.chapterIndex * .12;
+    const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.08 + this.chapterIndex * .1;
+    boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale;
     boss.maxHp = boss.hp;
-    boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale;
+    boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale;
     boss.speed = 44 + this.chapterIndex * 3;
     boss.armor = this.chapterIndex === 2 ? 4 : Math.floor(this.chapterIndex / 2);
     boss.xpValue = 35 + this.chapterIndex * 10;
@@ -2502,8 +2498,7 @@ class GameScene extends Phaser.Scene {
     this.kills += 1;
     this.chapterKills += 1;
     this.spawnExperienceOrbs(x, y, xpValue, elite ? 3 : 1, elite ? 15 : 11);
-    if (isMidBoss) this.spawnChest(x, y, true);
-    else if (Math.random() < .012 && this.chests.countActive(true) === 0) this.spawnChest(x, y);
+    if (isMidBoss) this.spawnChest(x, y);
   }
 
   defeatBoss(boss) {
@@ -2539,7 +2534,7 @@ class GameScene extends Phaser.Scene {
     this.spawnExperienceOrbs(x, y, bossXp, 6, 16, 42);
     this.beginBossExperienceCollection();
     this.spawnPortal(x + 132, y);
-    this.spawnChest(x, y, true);
+    this.spawnChest(x, y);
     audio.portal();
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
@@ -2629,7 +2624,6 @@ class GameScene extends Phaser.Scene {
     this.bossDefeated = false;
     this.midBossesSpawned = 0;
     this.activeBoss = null;
-    this.nextChestAt = 20;
     this.nextSpawnAt = this.time.now + 1600;
     this.nextHazardAt = this.time.now + 6500;
     this.chests.clear(true, true);
@@ -2690,7 +2684,6 @@ class GameScene extends Phaser.Scene {
   }
 
   addExperience(amount, offerLevelChoice = true) {
-    const previousLevel = this.level;
     this.xp += Math.max(0, amount);
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
@@ -2698,36 +2691,14 @@ class GameScene extends Phaser.Scene {
       this.xpNeeded = experienceRequired(this.level);
       this.pendingLevels += 1;
     }
-    if (!this.levelTenTreasureSpawned && previousLevel < 10 && this.level >= 10) {
-      this.levelTenTreasureSpawned = true;
-      this.spawnLevelTreasureNearby();
-    }
     this.updateHud();
     if (offerLevelChoice && this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
   }
 
-  spawnLevelTreasureNearby() {
-    if (!this.player?.active) return;
-    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const distance = Phaser.Math.Between(145, 210);
-    const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * distance, 90, WORLD_WIDTH - 90);
-    const y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * distance, 90, WORLD_HEIGHT - 90);
-    this.spawnChest(x, y, true);
-  }
-
-  spawnChest(forcedX, forcedY, guaranteed = false) {
-    if (!guaranteed && (this.bossDefeated || this.chests.countActive(true) > 0)) return;
-    const chestAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const x = forcedX ?? Phaser.Math.Clamp(
-      this.player.x + Math.cos(chestAngle) * Phaser.Math.Between(210, 330),
-      90,
-      WORLD_WIDTH - 90
-    );
-    const y = forcedY ?? Phaser.Math.Clamp(
-      this.player.y + Math.sin(chestAngle) * Phaser.Math.Between(210, 330),
-      90,
-      WORLD_HEIGHT - 90
-    );
+  spawnChest(forcedX, forcedY) {
+    if (!Number.isFinite(forcedX) || !Number.isFinite(forcedY)) return;
+    const x = forcedX;
+    const y = forcedY;
     const chest = this.chests.create(x, y, 'treasure-chest')
       .setDisplaySize(66, 66)
       .setDepth(18)
