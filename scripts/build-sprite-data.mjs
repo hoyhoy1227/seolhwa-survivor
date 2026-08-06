@@ -14,6 +14,7 @@ const spriteFiles = [
   'sansin.png',
   'cheoyong.png',
   'baridegi.png',
+  'sejong.png',
   'lantern.png',
   'treasure-chest.png',
   'enemy-dokkaebi.png',

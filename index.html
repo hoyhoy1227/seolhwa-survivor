@@ -635,10 +635,24 @@
       background: linear-gradient(180deg, rgba(240,185,79,.08), rgba(255,255,255,.02));
       color: var(--ink);
       cursor: pointer;
+      text-align: center;
     }
 
     .choice-card:hover, .choice-card:focus-visible { border-color: var(--gold); outline: none; transform: translateY(-2px); }
-    .choice-icon { display: block; margin-bottom: 12px; font-size: 34px; }
+    .choice-icon {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 12px;
+      place-items: center;
+      border: 1px solid rgba(240,185,79,.42);
+      border-radius: 16px;
+      background: radial-gradient(circle, rgba(240,185,79,.15), rgba(240,185,79,.035) 68%);
+      color: #f1c96d;
+      box-shadow: inset 0 0 18px rgba(240,185,79,.08);
+    }
+    .choice-icon.rare { border-color: rgba(255,221,130,.72); color: #ffe08a; box-shadow: 0 0 15px rgba(240,185,79,.14), inset 0 0 18px rgba(240,185,79,.11); }
+    .choice-icon svg { width: 39px; height: 39px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
     .choice-card strong { display: block; margin-bottom: 8px; color: #f5ce77; font-size: 17px; }
     .choice-card small { color: var(--muted); font-size: 12px; line-height: 1.55; }
     .rare-label { display: inline-block; margin-top: 13px; padding: 3px 7px; border: 1px solid #b38a40; color: #f2cb7a; font-size: 9px; letter-spacing: .14em; }
@@ -795,7 +809,7 @@
       <p class="section-copy">여섯 설화가 무너지기 전에 낮 동안 힘을 모으고, 밤의 보스를 쓰러뜨려 다음 세계로 나아가세요.</p>
       <div class="control-grid">
         <div class="control-card"><b>이동</b><span>방향키 또는 WASD를 사용합니다. 화면을 누르고 있어도 해당 방향으로 움직입니다.</span></div>
-        <div class="control-card"><b>공격</b><span>영웅마다 철퇴, 여우불, 수호 파동, 화살, 춤칼, 영혼꽃 등 서로 다른 자동 공격을 사용합니다.</span></div>
+        <div class="control-card"><b>공격</b><span>영웅마다 철퇴, 여우불, 수호 파동, 화살, 춤칼, 영혼꽃과 한글 글자 비격 등 서로 다른 자동 공격을 사용합니다.</span></div>
         <div class="control-card"><b>성장</b><span>경험치 근처로 이동해 정기를 끌어옵니다. 정기 복주머니를 얻으면 획득 범위가 크게 넓어집니다.</span></div>
         <div class="control-card"><b>보스와 포탈</b><span>보스를 처치하면 남은 적들이 파란 경험치로 변하고, 전장의 모든 경험치가 캐릭터에게 날아옵니다. 모두 도착하면 포탈이 열립니다.</span></div>
       </div>
@@ -808,7 +822,7 @@
   <section id="character-screen" class="screen hidden">
     <div class="selection-panel">
       <h2 class="section-heading">설화의 수호자를 선택하라</h2>
-      <p class="section-copy">영웅마다 시작 능력과 고유한 전투 방식이 다릅니다.</p>
+      <p class="section-copy">영웅마다 시작 능력과 고유한 전투 방식이 다릅니다. 여섯 설화를 모두 구하면 숨겨진 수호자가 해금됩니다.</p>
       <div id="character-grid"></div>
       <div class="menu-actions" style="margin-top:20px">
         <button id="selection-back" class="game-button secondary">타이틀로 돌아가기</button>
@@ -861,8 +875,8 @@
     </div>
   </section>
 
-  <script src="./src/sprite-data.js?v=20260805-5"></script>
+  <script src="./src/sprite-data.js?v=20260806-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260806-2"></script>
+  <script src="./src/game.js?v=20260806-3"></script>
 </body>
 </html>

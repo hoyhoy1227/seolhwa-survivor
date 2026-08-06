@@ -2,12 +2,16 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-2';
+const SPRITE_VERSION = '20260806-3';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
 const BOSS_REINFORCEMENT_SECONDS = 10;
 const ENEMY_DAMAGE_SCALE = 1.3;
+const RAPID_TREASURE_WINDOW_MS = 100;
+const TREASURE_MIN_SEPARATION = 180;
+const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
+const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
@@ -68,6 +72,16 @@ const CHARACTERS = [
     attack: '저승 영혼꽃',
     description: '연쇄되는 영혼꽃과 회복력, 넓은 호롱불로 밤을 이겨냅니다.',
     stats: { damage: 15, magic: 26, speed: 165, maxHP: 125, attackDelay: 570, regen: 1.2, lightRadius: 185 }
+  },
+  {
+    id: 'sejong',
+    name: '세종대왕',
+    role: '훈민정음의 성군',
+    accent: '#e0b653',
+    attack: '훈민정음 비격',
+    description: '한글 글자를 여러 방향으로 날려 적을 관통하고 지혜의 파동을 일으킵니다.',
+    unlock: 'campaign-clear',
+    stats: { damage: 22, magic: 34, speed: 168, maxHP: 140, attackDelay: 480, armor: 2, crit: .12, projectiles: 2 }
   }
 ];
 
@@ -144,6 +158,7 @@ const EMBEDDED_TEXTURE_FILES = Object.freeze({
   sansin: 'sansin.png',
   cheoyong: 'cheoyong.png',
   baridegi: 'baridegi.png',
+  sejong: 'sejong.png',
   lantern: 'lantern.png',
   'treasure-chest': 'treasure-chest.png',
   'enemy-dokkaebi': 'enemy-dokkaebi.png',
@@ -363,6 +378,38 @@ const SKILLS = [
   }
 ];
 
+const ITEM_ICON_SVGS = Object.freeze({
+  fire: '<path d="M25 4c2 8-5 9-2 16 3-3 5-6 5-10 7 6 11 12 9 20-2 8-8 13-16 13S7 38 8 29c1-6 5-11 10-15-1 5 1 8 4 10-1-8 4-12 3-20Z"/><path d="M24 25c4 4 5 7 3 11-1 3-6 4-8 1-3-4 1-8 5-12Z"/>',
+  crow: '<circle cx="24" cy="24" r="9"/><path d="M24 4v7M24 37v7M4 24h7M37 24h7M10 10l5 5M33 33l5 5M38 10l-5 5M15 33l-5 5"/>',
+  tiger: '<circle cx="24" cy="29" r="9"/><circle cx="11" cy="18" r="5"/><circle cx="21" cy="12" r="5"/><circle cx="37" cy="18" r="5"/><path d="M17 28c4-5 10-5 14 0M19 34c3 2 7 2 10 0"/>',
+  scale: '<path d="M24 4 39 10v11c0 10-6 18-15 23C15 39 9 31 9 21V10l15-6Z"/><path d="m17 23 5 5 10-11"/>',
+  lantern: '<path d="M18 5h12M16 9h16l3 7-3 23H16l-3-23 3-7ZM16 16h16M16 34h16M20 39v5M28 39v5"/><path d="M20 17h8v16h-8z"/>',
+  'spirit-pouch': '<path d="M17 8c4 3 10 3 14 0l-3 8c7 4 11 11 9 19-2 7-8 9-13 9s-11-2-13-9c-2-8 2-15 9-19l-3-8Z"/><path d="M17 17h14M24 22v14M19 28h10"/>',
+  bell: '<path d="M13 34h22l-4-6v-8c0-7-3-12-7-12s-7 5-7 12v8l-4 6Z"/><path d="M20 39c1 4 7 4 8 0M20 6h8"/>',
+  talisman: '<circle cx="24" cy="24" r="17"/><path d="M7 24h34M24 7c8 5 8 12 0 17s-8 12 0 17"/><circle cx="20" cy="17" r="2"/><circle cx="28" cy="31" r="2"/>',
+  moon: '<path d="M35 36A17 17 0 1 1 25 7c-7 10-3 24 10 29Z"/><path d="m34 9 1 4 4 1-4 1-1 4-1-4-4-1 4-1 1-4Z"/>',
+  medicine: '<path d="M23 41V20C23 11 31 6 40 7c0 9-6 17-17 17"/><path d="M23 31C18 21 10 18 5 20c0 8 6 14 18 14M23 24l11-11M23 31l-11-7"/>',
+  'fox-orb': '<circle cx="24" cy="25" r="14"/><path d="M16 26c3-8 15-8 16 0 1 6-8 10-12 5-3-4 2-8 6-5"/><path d="m14 10-4-6 8 3M34 10l4-6-8 3"/>',
+  'king-lantern': '<path d="M16 6h16M13 11h22l3 7-4 21H14l-4-21 3-7ZM14 18h20M14 34h20"/><path d="m24 20 3 5 5 1-4 4 1 5-5-3-5 3 1-5-4-4 5-1 3-5Z"/>',
+  storm: '<path d="M28 3 12 27h11l-3 18 16-25H25l3-17Z"/>',
+  immortal: '<path d="M24 41c-3-10-1-18 0-24M24 22C17 12 10 10 6 13c1 9 7 14 18 14M24 22c7-10 14-12 18-9-1 9-7 14-18 14"/><path d="M14 39c4-8 16-8 20 0-6 5-14 5-20 0Z"/>',
+  'wind-dagger': '<path d="m34 5 8 8-21 22-8-8L34 5ZM10 30l8 8M8 40l4-8 4 4-8 4Z"/><path d="M7 12h13M4 19h11"/>',
+  'guardian-knot': '<path d="M16 8c-7 0-10 9-5 14l13 13 13-13c5-5 2-14-5-14-5 0-8 4-8 8 0-4-3-8-8-8Z"/><path d="M16 40c7 0 10-9 5-14L8 13M32 40c-7 0-10-9-5-14l13-13"/>',
+  'salt-jar': '<path d="M16 7h16l-2 8c6 4 9 11 8 19-1 7-7 10-14 10S11 41 10 34c-1-8 2-15 8-19l-2-8ZM16 13h16M15 28h18"/><path d="m21 23 3-4 3 4-3 4-3-4Z"/>',
+  'frost-pin': '<path d="M24 4v40M7 14l34 20M41 14 7 34M24 4l-4 6M24 4l4 6M24 44l-4-6M24 44l4-6M7 14l7 1M7 14l2 7M41 14l-7 1M41 14l-2 7"/>',
+  'wide-sleeve': '<path d="M7 36c8-20 20-28 34-28-1 15-11 27-29 33l-5-5Z"/><path d="M12 36 38 11M17 34l1-15M24 29l5-15M12 40l-5 4"/>',
+  'orbit-talisman': '<circle cx="24" cy="24" r="18"/><path d="M24 6c9 5 9 14 0 18s-9 13 0 18"/><circle cx="20" cy="16" r="3"/><circle cx="28" cy="32" r="3"/><path d="M4 24h5M39 24h5"/>',
+  'lotus-array': '<path d="M24 39c-8-5-12-11-10-18 7 1 10 5 10 11 0-8 4-14 10-17 4 8 0 15-10 24Z"/><path d="M24 39C13 40 6 35 5 28c8-2 14 1 19 11M24 39c11 1 18-4 19-11-8-2-14 1-19 11M13 42h22"/>',
+  'crow-lightning': '<circle cx="24" cy="24" r="18"/><path d="m27 5-12 21h9l-3 17 13-23h-9l2-15Z"/>',
+  'phoenix-feather': '<path d="M37 5C20 8 10 21 11 43c8-13 15-21 26-38Z"/><path d="M13 39 32 12M17 30l-7-2M23 23l9 2M27 16l-6-3"/>',
+  'mirror-blade': '<ellipse cx="24" cy="21" rx="14" ry="17"/><path d="M18 37h12l4 7H14l4-7ZM18 10c6-5 13-2 16 4M14 22c4 5 9 7 15 6"/>'
+});
+
+function skillIconMarkup(skill) {
+  const drawing = ITEM_ICON_SVGS[skill.id] || '<circle cx="24" cy="24" r="17"/><path d="M24 12v24M12 24h24"/>';
+  return `<span class="choice-icon${skill.rare ? ' rare' : ''}"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">${drawing}</svg></span>`;
+}
+
 class GameAudio {
   constructor() {
     this.context = null;
@@ -418,7 +465,8 @@ class GameAudio {
       haechi: [[185, .2, 'triangle'], [370, .24, 'sine']],
       sansin: [[760, .045, 'square'], [310, .08, 'triangle']],
       cheoyong: [[410, .055, 'sawtooth'], [520, .07, 'triangle']],
-      baridegi: [[280, .2, 'sine'], [560, .26, 'triangle']]
+      baridegi: [[280, .2, 'sine'], [560, .26, 'triangle']],
+      sejong: [[392, .1, 'triangle'], [523, .13, 'sine'], [659, .16, 'triangle']]
     };
     (patterns[kind] || patterns.gumiho).forEach(([note, duration, type], index) => this.tone(note, duration, type, .026, index * .035));
   }
@@ -536,6 +584,7 @@ const ui = {
 
 let toastTimer = null;
 let pendingIntroCharacter = null;
+let sessionSejongUnlocked = false;
 
 function showToast(message, duration = 2200) {
   ui.toast.textContent = message;
@@ -618,9 +667,34 @@ function showChapterBriefing(scene, chapter) {
   ui.story.classList.remove('hidden');
 }
 
+function isSejongUnlocked() {
+  if (sessionSejongUnlocked) return true;
+  try {
+    return window.localStorage.getItem(SEJONG_UNLOCK_KEY) === '1';
+  } catch (error) {
+    console.warn('세종대왕 해금 기록을 읽을 수 없습니다.', error);
+    return false;
+  }
+}
+
+function unlockSejong() {
+  const newlyUnlocked = !isSejongUnlocked();
+  sessionSejongUnlocked = true;
+  try {
+    window.localStorage.setItem(SEJONG_UNLOCK_KEY, '1');
+  } catch (error) {
+    console.warn('세종대왕 해금 기록을 저장할 수 없습니다.', error);
+  }
+  return newlyUnlocked;
+}
+
+function isCharacterUnlocked(character) {
+  return character.unlock !== 'campaign-clear' || isSejongUnlocked();
+}
+
 function buildCharacterCards() {
   ui.characterGrid.innerHTML = '';
-  CHARACTERS.forEach(character => {
+  CHARACTERS.filter(isCharacterUnlocked).forEach(character => {
     const card = document.createElement('button');
     card.className = 'character-card';
     card.style.setProperty('--accent', character.accent);
@@ -652,6 +726,7 @@ function showTitle() {
   }
   hideScreens();
   ui.hud.classList.add('hidden');
+  buildCharacterCards();
   ui.title.classList.remove('hidden');
 }
 
@@ -1216,6 +1291,11 @@ class GameScene extends Phaser.Scene {
       showToast('스프라이트를 불러오지 못했습니다. Ctrl+F5로 새로고침해 주세요.', 5000);
       return;
     }
+    if (!isCharacterUnlocked(character)) {
+      showTitle();
+      showToast('세종대왕은 여섯 설화를 모두 클리어한 뒤 선택할 수 있습니다.', 4200);
+      return;
+    }
     this.selectedCharacter = character;
     const base = character.stats;
     this.stats = {
@@ -1230,7 +1310,7 @@ class GameScene extends Phaser.Scene {
       lightRadius: base.lightRadius || 145,
       pickupRadius: base.pickupRadius || 76,
       pickupSpeed: 1,
-      projectiles: 1,
+      projectiles: base.projectiles || 1,
       projectileSpeed: 1,
       projectileSize: 1,
       areaScale: 1,
@@ -1259,6 +1339,9 @@ class GameScene extends Phaser.Scene {
     this.midBossesSpawned = 0;
     this.bossExperienceCollectionActive = false;
     this.lastBossOrbAudioAt = 0;
+    this.treasureRewardKeys = new Set();
+    this.lastTreasureSpawnAt = -Infinity;
+    this.lastTreasurePosition = null;
     this.activeBoss = null;
     this.attackSequence = 0;
     this.nextSpawnAt = this.time.now + 1200;
@@ -1801,6 +1884,8 @@ class GameScene extends Phaser.Scene {
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
     const sizeScale = 1.24;
     enemy.isMidBoss = true;
+    enemy.setData('treasureRewardKey', `chapter-${this.chapterIndex}-midboss-${order}`);
+    enemy.setData('treasureDropped', false);
     enemy.setDisplaySize(enemy.displayWidth * sizeScale, enemy.displayHeight * sizeScale).setDepth(22);
     const laterChapter = this.chapterIndex === 0 ? 0 : this.chapterIndex;
     enemy.hp *= 3.4 + laterChapter * 1.1;
@@ -2053,7 +2138,8 @@ class GameScene extends Phaser.Scene {
       haechi: () => this.attackHaechi(targets),
       sansin: () => this.attackSansin(targets),
       cheoyong: () => this.attackCheoyong(targets),
-      baridegi: () => this.attackBaridegi(targets)
+      baridegi: () => this.attackBaridegi(targets),
+      sejong: () => this.attackSejong(targets)
     };
     attackMethods[this.selectedCharacter.id]?.();
     if (this.stats.lightning > 0 && this.attackSequence % Math.max(1, 4 - this.stats.lightning) === 0) {
@@ -2090,6 +2176,42 @@ class GameScene extends Phaser.Scene {
     projectile.setData('ricochet', this.stats.ricochet);
     projectile.setTint(damage.critical ? 0xffef62 : options.tint || 0xffffff);
     this.physics.velocityFromRotation(angle, (options.speed || 430) * this.stats.projectileSpeed, projectile.body.velocity);
+    return projectile;
+  }
+
+  launchHangulProjectile(target, glyph, options = {}) {
+    if (!target?.active) return null;
+    const angle = options.angle ?? Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+    const palette = options.palette || { fill: '#fff1a6', stroke: '#4b2a38', trail: 0xf4c85c };
+    const projectile = this.add.text(this.player.x, this.player.y, glyph, {
+      fontFamily: '"Noto Sans KR", "Malgun Gothic", sans-serif',
+      fontSize: `${Math.round(28 * this.stats.projectileSize)}px`,
+      fontStyle: 'bold',
+      color: palette.fill,
+      stroke: palette.stroke,
+      strokeThickness: 5,
+      padding: { left: 4, right: 4, top: 3, bottom: 3 }
+    }).setOrigin(.5).setDepth(26);
+    this.physics.add.existing(projectile);
+    projectile.body.setAllowGravity(false);
+    projectile.body.setSize(Math.max(18, projectile.width * .68), Math.max(18, projectile.height * .68), true);
+    this.projectiles.add(projectile);
+    const damage = this.rollDamage(options.multiplier || 1);
+    projectile.damage = damage.amount;
+    projectile.setData('critical', damage.critical);
+    projectile.setData('bornAt', this.time.now);
+    projectile.setData('life', options.life || 2100);
+    projectile.setData('target', target);
+    projectile.setData('homing', false);
+    projectile.setData('pierce', options.pierce ?? 1);
+    projectile.setData('splash', options.splash || 0);
+    projectile.setData('chain', 0);
+    projectile.setData('spin', false);
+    projectile.setData('ricochet', this.stats.ricochet);
+    projectile.setData('hangul', true);
+    projectile.setData('trailColor', palette.trail);
+    if (damage.critical) projectile.setTint(0xffef62);
+    this.physics.velocityFromRotation(angle, (options.speed || 485) * this.stats.projectileSpeed, projectile.body.velocity);
     return projectile;
   }
 
@@ -2184,6 +2306,30 @@ class GameScene extends Phaser.Scene {
     if (this.attackSequence % 5 === 0) {
       this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + 2 + this.level * .15);
       this.createImpactBurst(this.player.x, this.player.y, 0x9fe7d7, 22);
+    }
+  }
+
+  attackSejong(targets) {
+    const count = Math.max(2, Math.floor(this.stats.projectiles));
+    const palettes = [
+      { fill: '#fff0a1', stroke: '#5a2730', trail: 0xf4c85c },
+      { fill: '#ffffff', stroke: '#7b2c32', trail: 0xffe9b0 },
+      { fill: '#bfe5ff', stroke: '#263a6e', trail: 0x83c7ff }
+    ];
+    this.createAttackSigil(this.player.x, this.player.y, 0xe2b957, 58 + count * 4, 14);
+    for (let index = 0; index < count; index += 1) {
+      const target = targets[index % Math.min(count, targets.length)].enemy;
+      const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+      const spread = count > 1 ? (index - (count - 1) / 2) * .11 : 0;
+      const glyphIndex = (this.attackSequence * 2 + index) % HANGUL_GLYPHS.length;
+      this.launchHangulProjectile(target, HANGUL_GLYPHS[glyphIndex], {
+        angle: baseAngle + spread,
+        multiplier: .96,
+        speed: 500,
+        pierce: 1 + Math.floor(count / 3),
+        splash: 18 * this.stats.areaScale,
+        palette: palettes[index % palettes.length]
+      });
     }
   }
 
@@ -2327,6 +2473,14 @@ class GameScene extends Phaser.Scene {
 
   createProjectileTrail(projectile) {
     if (!projectile?.active) return;
+    if (projectile.getData('hangul')) {
+      const color = projectile.getData('trailColor') || 0xf4c85c;
+      const trail = this.add.circle(projectile.x, projectile.y, 6, color, .32)
+        .setStrokeStyle(2, 0xffffff, .35)
+        .setDepth(23);
+      this.tweens.add({ targets: trail, alpha: 0, scaleX: .15, scaleY: .15, duration: 220, onComplete: () => trail.destroy() });
+      return;
+    }
     const texture = projectile.texture.key;
     if (texture === 'arrow') {
       const angle = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
@@ -2514,12 +2668,15 @@ class GameScene extends Phaser.Scene {
       return;
     }
     const { x, y, xpValue, elite, isMidBoss } = enemy;
+    const treasureRewardKey = enemy.getData('treasureRewardKey');
+    const shouldDropTreasure = Boolean(isMidBoss && !enemy.getData('treasureDropped'));
+    if (shouldDropTreasure) enemy.setData('treasureDropped', true);
     enemy.getData('shadow')?.destroy();
     enemy.destroy();
     this.kills += 1;
     this.chapterKills += 1;
     this.spawnExperienceOrbs(x, y, xpValue, elite ? 3 : 1, elite ? 15 : 11);
-    if (isMidBoss) this.spawnChest(x, y);
+    if (shouldDropTreasure) this.spawnChest(x, y, treasureRewardKey);
   }
 
   defeatBoss(boss) {
@@ -2555,7 +2712,7 @@ class GameScene extends Phaser.Scene {
     this.spawnExperienceOrbs(x, y, bossXp, 6, 16, 42);
     this.beginBossExperienceCollection();
     this.spawnPortal(x + 132, y);
-    this.spawnChest(x, y);
+    this.spawnChest(x, y, `chapter-${this.chapterIndex}-boss`);
     audio.portal();
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
@@ -2644,6 +2801,8 @@ class GameScene extends Phaser.Scene {
     this.bossSpawned = false;
     this.bossDefeated = false;
     this.bossSpawnElapsed = null;
+    this.lastTreasureSpawnAt = -Infinity;
+    this.lastTreasurePosition = null;
     this.midBossesSpawned = 0;
     this.activeBoss = null;
     this.nextSpawnAt = this.time.now + 1600;
@@ -2680,12 +2839,17 @@ class GameScene extends Phaser.Scene {
   }
 
   completeCampaign() {
+    const sejongWasUnlocked = isSejongUnlocked();
+    const sejongNewlyUnlocked = unlockSejong() && !sejongWasUnlocked;
+    buildCharacterCards();
     this.state = 'victory';
     this.physics.pause();
     audio.stopBgm();
     audio.victory();
-    ui.pauseKicker.textContent = 'ALL FOLKLORE RESTORED';
-    ui.pauseHeading.textContent = `여섯 설화를 모두 구했습니다 · 총 ${this.kills}마리 처치`;
+    ui.pauseKicker.textContent = sejongNewlyUnlocked ? 'HIDDEN GUARDIAN UNLOCKED' : 'ALL FOLKLORE RESTORED';
+    ui.pauseHeading.textContent = sejongNewlyUnlocked
+      ? `여섯 설화를 모두 구했습니다 · 세종대왕 해금! 다음 판부터 선택할 수 있습니다.`
+      : `여섯 설화를 모두 구했습니다 · 총 ${this.kills}마리 처치`;
     ui.resume.classList.add('hidden');
     ui.pause.classList.remove('hidden');
   }
@@ -2717,16 +2881,51 @@ class GameScene extends Phaser.Scene {
     if (offerLevelChoice && this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
   }
 
-  spawnChest(forcedX, forcedY) {
+  resolveTreasureSpawnPosition(forcedX, forcedY) {
+    const origin = {
+      x: Phaser.Math.Clamp(forcedX, 90, WORLD_WIDTH - 90),
+      y: Phaser.Math.Clamp(forcedY, 90, WORLD_HEIGHT - 90)
+    };
+    if (this.time.now - this.lastTreasureSpawnAt > RAPID_TREASURE_WINDOW_MS) return origin;
+
+    const occupied = this.chests.getChildren()
+      .filter(chest => chest.active)
+      .map(chest => ({ x: chest.x, y: chest.y }));
+    if (this.lastTreasurePosition) occupied.push(this.lastTreasurePosition);
+    if (!occupied.length) return origin;
+
+    const nearestDistance = point => Math.min(...occupied.map(other => Phaser.Math.Distance.Between(point.x, point.y, other.x, other.y)));
+    if (nearestDistance(origin) >= TREASURE_MIN_SEPARATION) return origin;
+
+    let best = { ...origin, clearance: nearestDistance(origin) };
+    [TREASURE_MIN_SEPARATION + 10, 240, 290].forEach(radius => {
+      for (let step = 0; step < 12; step += 1) {
+        const angle = step / 12 * Math.PI * 2 + this.chapterIndex * .37;
+        const candidate = {
+          x: Phaser.Math.Clamp(origin.x + Math.cos(angle) * radius, 90, WORLD_WIDTH - 90),
+          y: Phaser.Math.Clamp(origin.y + Math.sin(angle) * radius, 90, WORLD_HEIGHT - 90)
+        };
+        const clearance = nearestDistance(candidate);
+        if (clearance > best.clearance) best = { ...candidate, clearance };
+      }
+    });
+    return { x: best.x, y: best.y };
+  }
+
+  spawnChest(forcedX, forcedY, rewardKey) {
     if (!Number.isFinite(forcedX) || !Number.isFinite(forcedY)) return;
-    const x = forcedX;
-    const y = forcedY;
+    if (rewardKey && this.treasureRewardKeys.has(rewardKey)) return;
+    if (rewardKey) this.treasureRewardKeys.add(rewardKey);
+    const { x, y } = this.resolveTreasureSpawnPosition(forcedX, forcedY);
     const chest = this.chests.create(x, y, 'treasure-chest')
       .setDisplaySize(66, 66)
       .setDepth(18)
       .setImmovable(true);
     chest.body.setAllowGravity(false);
     chest.setData('spawnedAt', this.time.now);
+    chest.setData('rewardKey', rewardKey || null);
+    this.lastTreasureSpawnAt = this.time.now;
+    this.lastTreasurePosition = { x, y };
     this.tweens.add({
       targets: chest,
       scaleX: chest.scaleX * 1.08,
@@ -2786,7 +2985,7 @@ class GameScene extends Phaser.Scene {
       const button = document.createElement('button');
       button.className = 'choice-card';
       button.innerHTML = `
-        <span class="choice-icon">${skill.icon}</span>
+        ${skillIconMarkup(skill)}
         <strong>${skill.title}</strong>
         <small>${skill.description}</small>
         ${skill.rare ? '<span class="rare-label">희귀 보물</span>' : ''}
