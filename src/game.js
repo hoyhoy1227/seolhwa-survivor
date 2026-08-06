@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-2';
+const SPRITE_VERSION = '20260807-3';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -41,6 +41,7 @@ const CHARACTERS = [
     accent: '#ef8b31',
     attack: '철퇴 지진파',
     description: '전방의 적들을 철퇴 지진파로 한꺼번에 분쇄합니다.',
+    spriteFacesLeft: true,
     stats: { damage: 24, magic: 8, speed: 172, maxHP: 150, attackDelay: 620, armor: 2 }
   },
   {
@@ -50,6 +51,7 @@ const CHARACTERS = [
     accent: '#d7594f',
     attack: '추적 여우불',
     description: '적을 따라가 폭발하는 여우불과 높은 치명타 확률을 지녔습니다.',
+    spriteFacesLeft: true,
     stats: { damage: 18, magic: 28, speed: 170, maxHP: 105, attackDelay: 500, crit: .16 }
   },
   {
@@ -59,6 +61,7 @@ const CHARACTERS = [
     accent: '#e6b84e',
     attack: '금빛 수호 파동',
     description: '전방위 수호 파동으로 적을 밀어내며 오래 버팁니다.',
+    spriteFacesLeft: true,
     stats: { damage: 20, magic: 10, speed: 148, maxHP: 180, attackDelay: 700, armor: 5 }
   },
   {
