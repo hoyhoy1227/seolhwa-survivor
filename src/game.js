@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-8';
+const SPRITE_VERSION = '20260807-9';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -14,7 +14,7 @@ const FINAL_BOSS_SUMMON_LIMIT = 2;
 const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
-const CHEST_PICKUP_RADIUS = 72;
+const CHEST_PICKUP_RADIUS = 96;
 const CHOICE_EXIT_INVULNERABILITY_MS = 500;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
@@ -3222,6 +3222,11 @@ class GameScene extends Phaser.Scene {
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
+    const touchedChest = this.findTouchedChest();
+    if (touchedChest) {
+      this.openChest(player, touchedChest);
+      if (this.state !== 'running') return;
+    }
     const carryBossExperience = this.bossExperienceCollectionActive;
     this.destroyPortalGuide(portal);
     portal.destroy();
@@ -3299,13 +3304,14 @@ class GameScene extends Phaser.Scene {
       audio.collect();
       this.lastBossOrbAudioAt = this.time.now;
     }
-    this.addExperience(experience, !fromBossCollection);
+    // 보스 흡수는 이동 방식만 다르며, 경험치와 레벨 계산은 일반 구슬과 완전히 같다.
+    this.addExperience(experience);
     if (fromBossCollection && this.bossExperienceCollectionActive && this.orbs.countActive(true) === 0) {
       this.finishBossExperienceCollection();
     }
   }
 
-  addExperience(amount, offerLevelChoice = true) {
+  addExperience(amount) {
     this.xp += Math.max(0, amount);
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
@@ -3314,7 +3320,7 @@ class GameScene extends Phaser.Scene {
       this.pendingLevels += 1;
     }
     this.updateHud();
-    if (offerLevelChoice) this.processPendingChoiceQueue();
+    this.processPendingChoiceQueue();
   }
 
   resolveTreasureSpawnPosition(forcedX, forcedY) {
@@ -3377,11 +3383,22 @@ class GameScene extends Phaser.Scene {
     showToast(`보물상자가 나타났습니다! 지도에서 ${location}을 확인하세요.`, 3200);
   }
 
+  findTouchedChest() {
+    if (!this.player?.active) return null;
+    return this.chests.getChildren().find(chest => {
+      if (!chest.active) return false;
+      const visualRadius = (
+        Math.max(this.player.displayWidth, this.player.displayHeight)
+        + Math.max(chest.displayWidth, chest.displayHeight)
+      ) * .55;
+      const pickupRadius = Math.max(CHEST_PICKUP_RADIUS, visualRadius);
+      return Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) <= pickupRadius;
+    }) || null;
+  }
+
   updateChestPickups() {
-    if (this.state !== 'running' || !this.player?.active) return;
-    const touchedChest = this.chests.getChildren().find(chest => chest.active && (
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) <= CHEST_PICKUP_RADIUS
-    ));
+    if (this.state !== 'running') return;
+    const touchedChest = this.findTouchedChest();
     if (touchedChest) this.openChest(this.player, touchedChest);
   }
 
