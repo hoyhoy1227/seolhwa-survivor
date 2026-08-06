@@ -2,12 +2,13 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-4';
+const SPRITE_VERSION = '20260806-5';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
 const BOSS_REINFORCEMENT_SECONDS = 10;
 const ENEMY_DAMAGE_SCALE = 1.3;
+const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
@@ -341,8 +342,8 @@ const SKILLS = [
   },
   {
     id: 'salt-jar', icon: '🏺', title: '액막이 소금단지',
-    description: '보스에게 주는 피해가 30% 증가합니다.',
-    apply: scene => { scene.stats.bossDamage += .3; }
+    description: '보스에게 주는 피해가 15% 증가합니다.',
+    apply: scene => { scene.stats.bossDamage += .15; }
   },
   {
     id: 'frost-pin', icon: '❄️', title: '서리 비녀',
@@ -705,10 +706,24 @@ function isCharacterUnlocked(character) {
 
 function buildCharacterCards() {
   ui.characterGrid.innerHTML = '';
-  CHARACTERS.filter(isCharacterUnlocked).forEach(character => {
+  CHARACTERS.forEach(character => {
+    const unlocked = isCharacterUnlocked(character);
     const card = document.createElement('button');
     card.className = 'character-card';
-    card.style.setProperty('--accent', character.accent);
+    card.style.setProperty('--accent', unlocked ? character.accent : '#696b78');
+    if (!unlocked) {
+      card.classList.add('locked-character');
+      card.disabled = true;
+      card.setAttribute('aria-label', '잠긴 숨겨진 수호자. 여섯 번째 설화의 최종 보스를 처치하면 해금됩니다.');
+      card.innerHTML = `
+        <img src="${spriteUrl(`${character.id}.png`)}" alt="" aria-hidden="true">
+        <strong>???</strong>
+        <em>HIDDEN GUARDIAN</em>
+        <span>여섯 번째 설화의 최종 보스를 처치하면 정체가 드러납니다.</span>
+      `;
+      ui.characterGrid.appendChild(card);
+      return;
+    }
     card.innerHTML = `
       <img src="${spriteUrl(`${character.id}.png`)}" alt="">
       <strong>${character.name}</strong>
@@ -1306,7 +1321,7 @@ class GameScene extends Phaser.Scene {
     }
     if (!isCharacterUnlocked(character)) {
       showTitle();
-      showToast('세종대왕은 여섯 설화를 모두 클리어한 뒤 선택할 수 있습니다.', 4200);
+      showToast('숨겨진 수호자는 여섯 번째 설화의 최종 보스를 처치한 뒤 선택할 수 있습니다.', 4200);
       return;
     }
     this.selectedCharacter = character;
@@ -1351,6 +1366,7 @@ class GameScene extends Phaser.Scene {
     this.bossSpawnElapsed = null;
     this.midBossesSpawned = 0;
     this.bossExperienceCollectionActive = false;
+    this.sejongUnlockedThisRun = false;
     this.lastBossOrbAudioAt = 0;
     this.treasureRewardKeys = new Set();
     this.lastTreasureSpawnAt = -Infinity;
@@ -1828,17 +1844,18 @@ class GameScene extends Phaser.Scene {
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
     const laterMap = this.chapterIndex > 0;
     const laterChapterPressure = laterMap ? 1.45 + this.chapterIndex * .22 : 1;
+    const firstChapterIntervalScale = laterMap ? 1 : FIRST_CHAPTER_SPAWN_INTERVAL_SCALE;
     const cap = Math.min(210, 30 + this.chapterIndex * 28 + Math.floor(progress * (42 + this.chapterIndex * 8) + overtime * (18 + this.chapterIndex * 4)));
     if (this.enemies.countActive(true) >= cap) {
       this.nextSpawnAt = this.time.now + 320;
       return;
     }
-    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) / laterChapterPressure;
+    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) * firstChapterIntervalScale / laterChapterPressure;
     const laterMapBatch = laterMap ? 2 + Math.floor(this.chapterIndex * .8) : 0;
     const batch = 1 + Math.floor(progress * 2.65) + laterMapBatch + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
     for (let index = 0; index < batch; index += 1) this.spawnEnemy(false);
-    const minimumInterval = laterMap ? Math.max(105, 165 - this.chapterIndex * 12) : 180;
-    const bossInterval = laterMap ? Math.max(190, 340 - this.chapterIndex * 28) : 360;
+    const minimumInterval = laterMap ? Math.max(105, 165 - this.chapterIndex * 12) : 180 * firstChapterIntervalScale;
+    const bossInterval = laterMap ? Math.max(190, 340 - this.chapterIndex * 28) : 360 * firstChapterIntervalScale;
     this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(bossInterval, interval * .9) : Math.max(minimumInterval, interval));
   }
 
@@ -1989,7 +2006,8 @@ class GameScene extends Phaser.Scene {
     boss.kind = 'boss';
     const laterBossHpScale = this.chapterIndex === 0 ? 1 : 2.05 + this.chapterIndex * .35;
     const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.35 + this.chapterIndex * .22;
-    boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale;
+    const requestedBossHpScale = this.chapterIndex === 0 ? .4 : this.chapterIndex === CAMPAIGN.length - 1 ? 2 : 1.5;
+    boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale * requestedBossHpScale;
     boss.maxHp = boss.hp;
     boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale * ENEMY_DAMAGE_SCALE;
     boss.speed = 44 + this.chapterIndex * 3;
@@ -2735,6 +2753,7 @@ class GameScene extends Phaser.Scene {
 
   defeatBoss(boss) {
     const chapter = CAMPAIGN[this.chapterIndex];
+    const finalBossDefeated = this.chapterIndex === CAMPAIGN.length - 1;
     const x = boss.x;
     const y = boss.y;
     const bossXp = boss.xpValue || 35;
@@ -2767,13 +2786,22 @@ class GameScene extends Phaser.Scene {
     this.beginBossExperienceCollection();
     this.spawnPortal(x + 132, y);
     this.spawnChest(x, y, `chapter-${this.chapterIndex}-boss`);
+    if (finalBossDefeated && !isSejongUnlocked()) {
+      this.sejongUnlockedThisRun = unlockSejong();
+      buildCharacterCards();
+    }
     audio.portal();
     this.cameras.main.flash(420, 255, 225, 150, false);
     this.cameras.main.shake(360, .011);
     for (let index = 0; index < 6; index += 1) {
       this.time.delayedCall(index * 90, () => this.createImpactBurst(x + Phaser.Math.Between(-70, 70), y + Phaser.Math.Between(-70, 70), chapter.accent, 42));
     }
-    showToast(`${chapter.bossName} 처치! 보물이 나타났습니다.`, 3000);
+    showToast(
+      this.sejongUnlockedThisRun
+        ? `${chapter.bossName} 처치! 숨겨진 수호자 세종대왕이 해금되었습니다.`
+        : `${chapter.bossName} 처치! 보물이 나타났습니다.`,
+      this.sejongUnlockedThisRun ? 4400 : 3000
+    );
   }
 
   beginBossExperienceCollection() {
@@ -2893,8 +2921,7 @@ class GameScene extends Phaser.Scene {
   }
 
   completeCampaign() {
-    const sejongWasUnlocked = isSejongUnlocked();
-    const sejongNewlyUnlocked = unlockSejong() && !sejongWasUnlocked;
+    const sejongNewlyUnlocked = this.sejongUnlockedThisRun || (!isSejongUnlocked() && unlockSejong());
     buildCharacterCards();
     this.state = 'victory';
     this.physics.pause();

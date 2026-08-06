@@ -225,6 +225,29 @@
     .character-card em { display: block; margin: 4px 0 10px; color: var(--accent, var(--gold)); font-size: 11px; font-style: normal; font-weight: 800; letter-spacing: .12em; }
     .character-card span { color: var(--muted); font-size: 12px; line-height: 1.55; }
 
+    .character-card.locked-character {
+      cursor: not-allowed;
+      border-style: dashed;
+      background: linear-gradient(180deg, rgba(103,106,120,.12), rgba(8,9,14,.72));
+      color: #8f9099;
+    }
+
+    .character-card.locked-character:hover,
+    .character-card.locked-character:focus-visible {
+      transform: none;
+      border-color: #696b78;
+      background: linear-gradient(180deg, rgba(103,106,120,.12), rgba(8,9,14,.72));
+    }
+
+    .character-card.locked-character img {
+      opacity: .72;
+      filter: brightness(0) saturate(0) drop-shadow(0 12px 8px rgba(0,0,0,.78));
+    }
+
+    .character-card.locked-character strong { letter-spacing: .22em; color: #777985; }
+    .character-card.locked-character em { color: #686a74; }
+    .character-card.locked-character span { color: #777985; }
+
     #hud {
       position: absolute;
       inset: 0;
@@ -877,6 +900,6 @@
 
   <script src="./src/sprite-data.js?v=20260806-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260806-4"></script>
+  <script src="./src/game.js?v=20260806-5"></script>
 </body>
 </html>
