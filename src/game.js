@@ -2,10 +2,12 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-1';
+const SPRITE_VERSION = '20260806-2';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
+const BOSS_REINFORCEMENT_SECONDS = 10;
+const ENEMY_DAMAGE_SCALE = 1.3;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
@@ -1253,6 +1255,7 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
+    this.bossSpawnElapsed = null;
     this.midBossesSpawned = 0;
     this.bossExperienceCollectionActive = false;
     this.lastBossOrbAudioAt = 0;
@@ -1707,8 +1710,17 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  canSpawnReinforcements() {
+    if (!this.bossSpawned || !Number.isFinite(this.bossSpawnElapsed)) return true;
+    return this.elapsed - this.bossSpawnElapsed < BOSS_REINFORCEMENT_SECONDS;
+  }
+
   spawnWave() {
     if (this.bossDefeated) {
+      this.nextSpawnAt = this.time.now + 1000;
+      return;
+    }
+    if (!this.canSpawnReinforcements()) {
       this.nextSpawnAt = this.time.now + 1000;
       return;
     }
@@ -1732,7 +1744,7 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnEnemy(forceElite = false) {
-    if (!this.player?.active) return;
+    if (!this.player?.active || !this.canSpawnReinforcements()) return;
     const spawnAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const spawnDistance = Phaser.Math.Between(430, 560);
     const x = Phaser.Math.Clamp(
@@ -1770,7 +1782,7 @@ class GameScene extends Phaser.Scene {
     enemy.hp = (18 + this.level * 4 + stageProgress * 18 + this.chapterIndex * 7) * chapter.hpScale * laterEnemyHpScale * (elite ? 3 : 1);
     enemy.maxHp = enemy.hp;
     enemy.speed = ((ranged ? 29 : 36) + stageProgress * (ranged ? 16 : 28) + (elite ? 4 : 0)) * chapter.speedScale;
-    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale * laterEnemyDamageScale;
+    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale * laterEnemyDamageScale * ENEMY_DAMAGE_SCALE;
     enemy.xpValue = elite ? 8 : ranged ? 4 : 3;
     enemy.elite = elite;
     enemy.kind = ranged ? 'ranged' : 'melee';
@@ -1857,6 +1869,7 @@ class GameScene extends Phaser.Scene {
   spawnBoss() {
     if (this.bossSpawned || !this.player?.active) return;
     this.bossSpawned = true;
+    this.bossSpawnElapsed = this.elapsed;
     const chapter = CAMPAIGN[this.chapterIndex];
     const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * 390, 120, WORLD_WIDTH - 120);
@@ -1869,7 +1882,7 @@ class GameScene extends Phaser.Scene {
     const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.35 + this.chapterIndex * .22;
     boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale;
     boss.maxHp = boss.hp;
-    boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale;
+    boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale * ENEMY_DAMAGE_SCALE;
     boss.speed = 44 + this.chapterIndex * 3;
     boss.armor = this.chapterIndex === 2 ? 4 : Math.floor(this.chapterIndex / 2);
     boss.xpValue = 35 + this.chapterIndex * 10;
@@ -2418,8 +2431,10 @@ class GameScene extends Phaser.Scene {
     const x = Phaser.Math.Clamp(this.player.x + Phaser.Math.Between(-170, 170), 80, WORLD_WIDTH - 80);
     const y = Phaser.Math.Clamp(this.player.y + Phaser.Math.Between(-150, 150), 80, WORLD_HEIGHT - 80);
     if (chapter.hazard === 'illusions') {
-      for (let index = 0; index < 2 + Math.floor(this.elapsed / 28); index += 1) this.spawnEnemy(index === 0 && this.elapsed > SUNSET_START);
-      showToast('여우 환영이 새로운 요괴 무리를 불러냈습니다!', 1800);
+      if (this.canSpawnReinforcements()) {
+        for (let index = 0; index < 2 + Math.floor(this.elapsed / 28); index += 1) this.spawnEnemy(index === 0 && this.elapsed > SUNSET_START);
+        showToast('여우 환영이 새로운 요괴 무리를 불러냈습니다!', 1800);
+      }
     } else if (chapter.hazard === 'wind') {
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
       const gust = this.add.graphics().setDepth(33).lineStyle(11, 0xc9f1db, .38).lineBetween(this.player.x - Math.cos(angle) * 210, this.player.y - Math.sin(angle) * 210, this.player.x + Math.cos(angle) * 210, this.player.y + Math.sin(angle) * 210);
@@ -2428,8 +2443,10 @@ class GameScene extends Phaser.Scene {
       showToast('산바람이 이동 방향을 밀어냅니다!', 1500);
     } else if (chapter.hazard === 'rifts') {
       this.createPersistentHazard(x, y, 78, chapter.accent, 6200, 8 + this.chapterIndex * 2);
-      this.spawnEnemy(true);
-      showToast('저승 균열에서 정예 옥졸이 나타났습니다!', 1800);
+      if (this.canSpawnReinforcements()) {
+        this.spawnEnemy(true);
+        showToast('저승 균열에서 정예 옥졸이 나타났습니다!', 1800);
+      }
     } else {
       const colors = { embers: 0xff7839, shards: 0xffcf62, plague: 0x67d7e4 };
       const radii = { embers: 68, shards: 58, plague: 82 };
@@ -2626,6 +2643,7 @@ class GameScene extends Phaser.Scene {
     this.chapterKills = 0;
     this.bossSpawned = false;
     this.bossDefeated = false;
+    this.bossSpawnElapsed = null;
     this.midBossesSpawned = 0;
     this.activeBoss = null;
     this.nextSpawnAt = this.time.now + 1600;
