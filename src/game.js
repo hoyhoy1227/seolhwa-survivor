@@ -2,12 +2,15 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-6';
+const SPRITE_VERSION = '20260807-1';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
 const BOSS_REINFORCEMENT_SECONDS = 10;
 const ENEMY_DAMAGE_SCALE = 1.3;
+const FINAL_BOSS_CURRENT_HP_MULTIPLIER = 4;
+const FINAL_BOSS_ATTACK_SPEED_MULTIPLIER = 1.05;
+const FINAL_BOSS_SUMMON_LIMIT = 2;
 const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
@@ -146,7 +149,7 @@ const CAMPAIGN = [
   },
   {
     id: 'underworld-road', name: '바리의 저승꽃길', story: '저승꽃길의 문이 닫히며 떠도는 혼들이 길을 잃었습니다.',
-    bossName: '염라대왕', bossTexture: 'boss-yeomra', bossPattern: 'judgment',
+    bossName: '염라대왕', bossTexture: 'boss-yeomra', bossPattern: 'legacy-random',
     enemyNames: ['길 잃은 혼', '저승 옥졸', '명부 술사'],
     ground: 0x30374d, path: 0x6e6688, accent: 0x78b9ff, map: '#20273c',
     rangedChance: .4, hpScale: 1.62, speedScale: 1.16, damageScale: 1.36, spawnScale: .5, bossHpScale: 2.75,
@@ -621,9 +624,10 @@ function currentScene() {
 
 function renderStoryDetails(details) {
   ui.storyDetails.innerHTML = '';
-  details.forEach(({ label, text }) => {
+  details.forEach(({ label, text, emphasis }) => {
     const card = document.createElement('div');
     card.className = 'story-detail-card';
+    if (emphasis) card.classList.add('combat-detail');
     const heading = document.createElement('b');
     heading.textContent = label;
     const copy = document.createElement('span');
@@ -649,7 +653,7 @@ function showCampaignIntro(character) {
   ui.storyNarrative.textContent = '사람들이 옛이야기를 잊기 시작하자, 여섯 설화의 경계가 무너졌습니다. 탐욕의 불길과 여우의 환영, 쇳조각의 폭우, 뒤틀린 산바람, 역병의 춤과 저승의 균열이 이야기 속 세상을 삼키고 있습니다.\n\n설화가 완전히 사라지기 전, 선택받은 수호자만이 밤을 건너 이야기를 되돌릴 수 있습니다.';
   ui.storyObjective.textContent = `${character.name}의 힘으로 낮 동안 성장하고 밤의 보스를 쓰러뜨리세요. 열린 포탈을 통과해 여섯 설화를 모두 구하면 이야기가 완성됩니다.`;
   renderStoryDetails([
-    { label: '선택한 수호자', text: `${character.name} · ${character.attack} — ${character.description}` },
+    { label: '전투 특성과 방식', text: `${character.name} · ${character.attack} — ${character.description}`, emphasis: true },
     { label: '여정의 목표', text: '각 설화의 밤 보스를 처치하고 포탈을 통과해 총 6개의 세계를 복원합니다.' },
     { label: '첫 번째 설화', text: `${firstChapter.name} · ${firstChapter.deviceName}을 경계하며 ${firstChapter.bossName}에게 맞서세요.` }
   ]);
@@ -979,28 +983,24 @@ class GameScene extends Phaser.Scene {
   applyChapterTheme(index) {
     const chapter = CAMPAIGN[index] || CAMPAIGN[0];
     this.groundBase.setFillStyle(chapter.ground, 1);
-    this.ground.setTint(chapter.ground);
-    this.terrain.clear();
-    this.terrain.fillStyle(chapter.path, .4);
-    this.terrain.fillRoundedRect(0, WORLD_HEIGHT / 2 - 74, WORLD_WIDTH, 148, 48);
-    this.terrain.fillRoundedRect(WORLD_WIDTH / 2 - 78, 0, 156, WORLD_HEIGHT, 48);
-    this.terrain.fillRoundedRect(180, 350, 780, 82, 32);
-    this.terrain.fillRoundedRect(1450, 1360, 760, 78, 32);
-    this.terrain.lineStyle(4, chapter.accent, .25);
-    this.terrain.strokeRoundedRect(0, WORLD_HEIGHT / 2 - 74, WORLD_WIDTH, 148, 48);
-    this.terrain.strokeRoundedRect(WORLD_WIDTH / 2 - 78, 0, 156, WORLD_HEIGHT, 48);
-
-    this.pathDetails.clear();
-    this.pathDetails.lineStyle(2, chapter.accent, .18);
-    for (let x = 28; x < WORLD_WIDTH; x += 62) {
-      this.pathDetails.strokeCircle(x, WORLD_HEIGHT / 2 + ((x / 62) % 3 - 1) * 23, 9 + (x % 4));
-    }
-    for (let y = 30; y < WORLD_HEIGHT; y += 58) {
-      this.pathDetails.strokeRoundedRect(WORLD_WIDTH / 2 - 20 + ((y / 58) % 3 - 1) * 19, y, 28, 12, 5);
-    }
+    this.ground.setTint(chapter.ground).setAlpha(.92);
+    const tileScales = [1.08, .78, 1.28, .7, 1.04, .88];
+    this.ground.tileScaleX = tileScales[index];
+    this.ground.tileScaleY = tileScales[index] * (index === 3 ? .82 : 1);
+    this.ground.tilePositionX = index * 137;
+    this.ground.tilePositionY = index * 89;
+    this.drawChapterTerrain(index, chapter);
 
     this.landmarks.clear();
-    const places = [[230,250],[2140,310],[300,1480],[2050,1430],[720,620],[1690,1180],[520,1210],[1880,620]];
+    const landmarkLayouts = [
+      [[250,260],[600,250],[1800,250],[2150,300],[270,1510],[720,1390],[1710,1420],[2110,1490]],
+      [[260,1280],[480,510],[760,1170],[1050,470],[1370,1320],[1660,620],[1950,1250],[2190,430]],
+      [[250,280],[610,300],[1200,260],[1790,300],[2150,280],[390,1460],[1200,1510],[2010,1450]],
+      [[260,360],[520,1390],[820,610],[1070,1320],[1370,470],[1620,1230],[1910,610],[2180,1430]],
+      [[310,300],[720,330],[1200,300],[1680,330],[2090,300],[520,1450],[1200,1500],[1880,1450]],
+      [[240,340],[500,1190],[780,560],[1060,1410],[1390,410],[1660,1250],[1940,620],[2190,1450]]
+    ];
+    const places = landmarkLayouts[index] || landmarkLayouts[0];
     places.forEach(([x, y], marker) => {
       const style = index % 6;
       if (style === 0) {
@@ -1031,6 +1031,134 @@ class GameScene extends Phaser.Scene {
     });
     this.drawChapterScenery(index, chapter);
     this.buildMapDevices(index, chapter);
+  }
+
+  drawChapterTerrain(index, chapter) {
+    const terrain = this.terrain;
+    const details = this.pathDetails;
+    const pathShadow = Phaser.Display.Color.ValueToColor(chapter.path).darken(34).color;
+    terrain.clear();
+    details.clear();
+
+    const drawRoute = (points, width, alpha = .43, color = chapter.path) => {
+      terrain.lineStyle(width + 18, pathShadow, .22);
+      terrain.beginPath().moveTo(points[0][0], points[0][1]);
+      points.slice(1).forEach(([x, y]) => terrain.lineTo(x, y));
+      terrain.strokePath();
+      terrain.lineStyle(width, color, alpha);
+      terrain.beginPath().moveTo(points[0][0], points[0][1]);
+      points.slice(1).forEach(([x, y]) => terrain.lineTo(x, y));
+      terrain.strokePath();
+      terrain.lineStyle(3, chapter.accent, .24);
+      terrain.beginPath().moveTo(points[0][0], points[0][1]);
+      points.slice(1).forEach(([x, y]) => terrain.lineTo(x, y));
+      terrain.strokePath();
+    };
+
+    if (index === 0) {
+      // 도깨비 장터: 장방형 상점 구획과 중앙 흥정 마당
+      terrain.fillStyle(chapter.path, .34).fillCircle(1200, 900, 285);
+      terrain.lineStyle(10, 0x5a3225, .42).strokeCircle(1200, 900, 292);
+      [510, 900, 1290].forEach(y => drawRoute([[-80, y], [2480, y]], y === 900 ? 164 : 104));
+      [590, 1200, 1810].forEach(x => drawRoute([[x, -80], [x, 1880]], x === 1200 ? 132 : 88));
+      details.lineStyle(2, 0x4d2d20, .38);
+      for (let row = 0; row < 8; row += 1) {
+        for (let col = 0; col < 11; col += 1) {
+          const x = 110 + col * 218 + (row % 2) * 28;
+          const y = 110 + row * 220;
+          details.strokeRoundedRect(x, y, 118, 72, 12);
+          details.lineStyle(2, chapter.accent, .18).lineBetween(x + 12, y + 58, x + 106, y + 58);
+        }
+      }
+      for (let stone = 0; stone < 44; stone += 1) {
+        const angle = stone / 44 * Math.PI * 2;
+        details.fillStyle(stone % 3 ? 0xc69b62 : 0x6f4830, .22).fillCircle(1200 + Math.cos(angle) * (185 + stone % 4 * 18), 900 + Math.sin(angle) * (185 + stone % 4 * 18), 7 + stone % 5);
+      }
+    } else if (index === 1) {
+      // 여우고개: 달빛 아래 굽이치는 고갯길과 환영 연못
+      drawRoute([[-80,1510],[280,1350],[520,1110],[820,1190],[1080,920],[1360,1010],[1610,720],[1900,780],[2180,470],[2480,300]], 148, .46);
+      drawRoute([[260,1880],[410,1530],[700,1370],[980,1080]], 86, .3);
+      [[430,430,175],[920,520,115],[1530,1350,160],[2050,1180,120]].forEach(([x, y, radius], pool) => {
+        terrain.fillStyle(pool % 2 ? 0x392a48 : 0x2c243e, .68).fillCircle(x, y, radius);
+        terrain.lineStyle(5, 0xe9b8d0, .28).strokeCircle(x, y, radius - 9);
+        terrain.lineStyle(2, chapter.accent, .34).strokeCircle(x, y, radius * .68);
+      });
+      for (let wisp = 0; wisp < 52; wisp += 1) {
+        const x = 70 + (wisp * 181) % 2260;
+        const y = 80 + (wisp * 317) % 1640;
+        details.lineStyle(2, wisp % 2 ? 0xffb8d5 : 0xb28bc7, .28).beginPath().arc(x, y, 10 + wisp % 5 * 4, .2, Math.PI * 1.65).strokePath();
+      }
+    } else if (index === 2) {
+      // 해치의 금문: 성벽, 사각 궁정, 금빛 수호선
+      terrain.fillStyle(0x40382d, .48).fillRoundedRect(300, 210, 1800, 1380, 48);
+      terrain.lineStyle(44, 0x3b3328, .9).strokeRoundedRect(300, 210, 1800, 1380, 48);
+      terrain.lineStyle(7, 0xe4bd55, .48).strokeRoundedRect(330, 240, 1740, 1320, 38);
+      drawRoute([[1200,-80],[1200,1880]], 188, .5);
+      drawRoute([[-80,900],[2480,900]], 136, .39);
+      [[300,210],[2100,210],[300,1590],[2100,1590]].forEach(([x, y]) => {
+        terrain.fillStyle(0x5a4a31, .96).fillCircle(x, y, 82);
+        terrain.lineStyle(8, 0xf0cf68, .5).strokeCircle(x, y, 70);
+      });
+      details.lineStyle(3, 0xe3c566, .28);
+      for (let x = 430; x <= 1970; x += 140) {
+        details.lineBetween(x, 250, x, 1550);
+        for (let y = 280; y < 1540; y += 126) details.strokeRect(x - 52, y, 104, 62);
+      }
+      details.lineStyle(5, 0xffe797, .26).strokeCircle(1200, 900, 230).strokeCircle(1200, 900, 160);
+    } else if (index === 3) {
+      // 산군 봉우리: 능선을 오르는 지그재그 산길과 고도선
+      drawRoute([[-100,1570],[360,1470],[620,1220],[980,1290],[1230,980],[1550,1050],[1810,740],[2170,790],[2500,520]], 128, .42);
+      drawRoute([[120,-80],[360,250],[720,340],[940,600],[1280,520],[1510,760]], 78, .29);
+      for (let ridge = 0; ridge < 12; ridge += 1) {
+        const x = 100 + ridge * 205;
+        const y = ridge % 2 ? 250 : 1540;
+        terrain.fillStyle(ridge % 2 ? 0x314b39 : 0x273f32, .7).fillTriangle(x - 135, y + 110, x, y - 125 - ridge % 3 * 24, x + 135, y + 110);
+        terrain.lineStyle(4, 0x9bc989, .22).lineBetween(x - 48, y - 34, x, y - 125 - ridge % 3 * 24).lineBetween(x, y - 125 - ridge % 3 * 24, x + 44, y - 42);
+      }
+      for (let contour = 0; contour < 30; contour += 1) {
+        const x = 90 + (contour * 269) % 2200;
+        const y = 100 + (contour * 173) % 1600;
+        details.lineStyle(2, contour % 2 ? 0xb0d29a : chapter.accent, .2).strokeCircle(x, y, 34 + contour % 5 * 17);
+      }
+    } else if (index === 4) {
+      // 처용의 달궁: 대칭 궁정, 월륜 무대, 기와 회랑
+      terrain.fillStyle(0x332942, .62).fillRoundedRect(250, 180, 1900, 1440, 72);
+      terrain.lineStyle(34, 0x251d32, .82).strokeRoundedRect(250, 180, 1900, 1440, 72);
+      terrain.lineStyle(6, 0x8fc8d5, .35).strokeRoundedRect(285, 215, 1830, 1370, 58);
+      drawRoute([[1200,-80],[1200,1880]], 154, .38);
+      drawRoute([[-80,900],[2480,900]], 118, .3);
+      terrain.fillStyle(0x211a31, .85).fillCircle(1200, 900, 340);
+      terrain.lineStyle(12, chapter.accent, .38).strokeCircle(1200, 900, 316);
+      terrain.lineStyle(4, 0xd6c2f1, .42).strokeCircle(1200, 900, 236).strokeCircle(1200, 900, 138);
+      for (let ray = 0; ray < 16; ray += 1) {
+        const angle = ray / 16 * Math.PI * 2;
+        details.lineStyle(ray % 2 ? 2 : 5, ray % 2 ? 0x8ec8d5 : 0xc791df, .26).lineBetween(1200 + Math.cos(angle) * 150, 900 + Math.sin(angle) * 150, 1200 + Math.cos(angle) * 305, 900 + Math.sin(angle) * 305);
+      }
+      for (let tile = 0; tile < 36; tile += 1) {
+        const x = 330 + (tile % 9) * 218;
+        const y = tile < 18 ? 255 + Math.floor(tile / 9) * 112 : 1430 + Math.floor((tile - 18) / 9) * 86;
+        details.lineStyle(3, 0x9bcbd4, .22).strokeRoundedRect(x, y, 142, 54, 18);
+      }
+    } else {
+      // 바리의 저승꽃길: 삼도천, 비스듬한 혼의 길, 저승 징검돌
+      terrain.lineStyle(250, 0x18283f, .84);
+      terrain.beginPath().moveTo(-100, 410).lineTo(360, 520).lineTo(770, 390).lineTo(1190, 540).lineTo(1620, 400).lineTo(2020, 530).lineTo(2500, 430).strokePath();
+      terrain.lineStyle(8, 0x78b9ff, .28);
+      terrain.beginPath().moveTo(-100, 410).lineTo(360, 520).lineTo(770, 390).lineTo(1190, 540).lineTo(1620, 400).lineTo(2020, 530).lineTo(2500, 430).strokePath();
+      drawRoute([[-120,1640],[300,1490],[610,1260],[940,1320],[1210,1050],[1510,1110],[1820,850],[2130,900],[2500,700]], 138, .42, 0x60627d);
+      for (let stone = 0; stone < 25; stone += 1) {
+        const x = 40 + stone * 102;
+        const y = 450 + Math.sin(stone * .8) * 62;
+        terrain.fillStyle(stone % 2 ? 0x58677e : 0x3f4f69, .88).fillRoundedRect(x - 26, y - 13, 52, 27, 8);
+        details.lineStyle(2, 0xa9d7ff, .28).strokeRoundedRect(x - 24, y - 11, 48, 23, 7);
+      }
+      for (let rune = 0; rune < 38; rune += 1) {
+        const x = 90 + (rune * 233) % 2210;
+        const y = 650 + (rune * 167) % 1040;
+        details.lineStyle(2, rune % 2 ? 0x91c9ff : 0xa88cdf, .25).strokeCircle(x, y, 16 + rune % 4 * 6);
+        details.lineBetween(x - 10, y, x + 10, y).lineBetween(x, y - 10, x, y + 10);
+      }
+    }
   }
 
   drawChapterScenery(index, chapter) {
@@ -1869,17 +1997,19 @@ class GameScene extends Phaser.Scene {
     this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(bossInterval, interval * .9) : Math.max(minimumInterval, interval));
   }
 
-  spawnEnemy(forceElite = false) {
-    if (!this.player?.active || !this.canSpawnReinforcements()) return;
+  spawnEnemy(forceElite = false, options = {}) {
+    if (!this.player?.active || (!options.ignoreReinforcementLimit && !this.canSpawnReinforcements())) return;
     const spawnAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const spawnDistance = Phaser.Math.Between(430, 560);
+    const spawnDistance = Phaser.Math.Between(options.minDistance || 430, options.maxDistance || 560);
+    const originX = Number.isFinite(options.originX) ? options.originX : this.player.x;
+    const originY = Number.isFinite(options.originY) ? options.originY : this.player.y;
     const x = Phaser.Math.Clamp(
-      this.player.x + Math.cos(spawnAngle) * spawnDistance,
+      Number.isFinite(options.x) ? options.x : originX + Math.cos(spawnAngle) * spawnDistance,
       28,
       WORLD_WIDTH - 28
     );
     const y = Phaser.Math.Clamp(
-      this.player.y + Math.sin(spawnAngle) * spawnDistance,
+      Number.isFinite(options.y) ? options.y : originY + Math.sin(spawnAngle) * spawnDistance,
       28,
       WORLD_HEIGHT - 28
     );
@@ -2016,7 +2146,11 @@ class GameScene extends Phaser.Scene {
     boss.kind = 'boss';
     const laterBossHpScale = this.chapterIndex === 0 ? 1 : 2.05 + this.chapterIndex * .35;
     const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.35 + this.chapterIndex * .22;
-    const requestedBossHpScale = this.chapterIndex === 0 ? .4 : this.chapterIndex === CAMPAIGN.length - 1 ? 2 : 1.5;
+    const requestedBossHpScale = this.chapterIndex === 0
+      ? .4
+      : this.chapterIndex === CAMPAIGN.length - 1
+        ? 2 * FINAL_BOSS_CURRENT_HP_MULTIPLIER
+        : 1.5;
     boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale * requestedBossHpScale;
     boss.maxHp = boss.hp;
     boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale * ENEMY_DAMAGE_SCALE;
@@ -2030,6 +2164,9 @@ class GameScene extends Phaser.Scene {
     boss.setData('baseTint', 0xffffff);
     boss.setData('pattern', chapter.bossPattern);
     boss.setData('enraged', false);
+    boss.setData('attackSpeedMultiplier', this.chapterIndex === CAMPAIGN.length - 1 ? FINAL_BOSS_ATTACK_SPEED_MULTIPLIER : 1);
+    boss.setData('lastLegacyPattern', null);
+    boss.setData('nextSummonAt', this.chapterIndex === CAMPAIGN.length - 1 ? this.time.now + 7200 : Infinity);
     this.activeBoss = boss;
     ui.bossName.textContent = `${chapter.bossName} · ${this.chapterIndex + 1}번째 설화`;
     ui.bossFill.style.width = '100%';
@@ -2053,6 +2190,9 @@ class GameScene extends Phaser.Scene {
       audio.boss();
       showToast(`${CAMPAIGN[this.chapterIndex].bossName}이(가) 두 번째 힘을 해방했습니다!`, 2600);
     }
+    if (this.chapterIndex === CAMPAIGN.length - 1 && !boss.getData('attacking') && this.time.now >= boss.getData('nextSummonAt')) {
+      if (this.summonFinalBossGuardian(boss)) return;
+    }
     const distance = Phaser.Math.Distance.Between(boss.x, boss.y, this.player.x, this.player.y);
     const angle = Phaser.Math.Angle.Between(boss.x, boss.y, this.player.x, this.player.y);
     if (distance > 175) this.physics.velocityFromRotation(angle, boss.speed, boss.body.velocity);
@@ -2062,11 +2202,85 @@ class GameScene extends Phaser.Scene {
     if (this.time.now >= boss.nextAttackAt) this.performBossPattern(boss);
   }
 
+  summonFinalBossGuardian(boss) {
+    if (!boss?.active || boss.getData('attacking')) return false;
+    const activeSummons = this.enemies.getChildren().filter(enemy => enemy.active && enemy.getData('summonedByFinalBoss')).length;
+    if (activeSummons >= FINAL_BOSS_SUMMON_LIMIT) {
+      boss.setData('nextSummonAt', this.time.now + 2600);
+      return false;
+    }
+
+    const attackSpeed = boss.getData('attackSpeedMultiplier') || 1;
+    const summonDelay = Math.round(760 / attackSpeed);
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const summonX = Phaser.Math.Clamp(boss.x + Math.cos(angle) * Phaser.Math.Between(135, 205), 90, WORLD_WIDTH - 90);
+    const summonY = Phaser.Math.Clamp(boss.y + Math.sin(angle) * Phaser.Math.Between(135, 205), 90, WORLD_HEIGHT - 90);
+    boss.setData('attacking', true);
+    boss.setData('nextSummonAt', this.time.now + (boss.getData('enraged') ? 9000 : 11800));
+    boss.nextAttackAt = Math.max(boss.nextAttackAt, this.time.now + summonDelay + 520);
+    boss.setVelocity(0, 0);
+    boss.setTint(0xaecbff);
+
+    const marker = this.createHazardTelegraph(summonX, summonY, 72, 0x9bbcff, summonDelay);
+    this.createAttackSigil(boss.x, boss.y, 0x9bbcff, 105, 10);
+    this.createHostileMarker(summonX, summonY, 80, summonDelay);
+    const chain = this.add.graphics().setDepth(25);
+    chain.lineStyle(12, HOSTILE_ATTACK_DARK, .7).lineBetween(boss.x, boss.y, summonX, summonY);
+    chain.lineStyle(4, 0x9bbcff, .86).lineBetween(boss.x, boss.y, summonX, summonY);
+    this.tweens.add({ targets: chain, alpha: 0, duration: summonDelay, onComplete: () => chain.destroy() });
+
+    this.time.delayedCall(summonDelay, () => {
+      marker.destroy();
+      if (!boss.active) return;
+      if (this.state !== 'running') {
+        boss.setData('nextSummonAt', this.time.now + 2600);
+        this.finishBossAttack(boss);
+        return;
+      }
+      const guardian = this.spawnEnemy(true, {
+        ignoreReinforcementLimit: true,
+        x: summonX,
+        y: summonY
+      });
+      if (guardian?.active) {
+        guardian.isMidBoss = true;
+        guardian.setData('noTreasure', true);
+        guardian.setData('treasureDropped', true);
+        guardian.setData('summonedByFinalBoss', true);
+        guardian.setData('folkName', '염라의 소환 수문장');
+        guardian.setDisplaySize(guardian.displayWidth * 1.42, guardian.displayHeight * 1.42).setDepth(23);
+        guardian.hp *= 2.35;
+        guardian.maxHp = guardian.hp;
+        guardian.damage *= 1.12;
+        guardian.speed *= .88;
+        guardian.xpValue = 20;
+        guardian.setData('baseTint', 0xa9c7ff);
+        guardian.setTint(0xa9c7ff);
+        const shadow = guardian.getData('shadow');
+        if (shadow?.active) shadow.setScale(1.48, 1.48).setAlpha(.62);
+        this.createDevicePulse(summonX, summonY, 0x91bfff, 105);
+        this.createGroundCracks(summonX, summonY, 0x789cff, 88);
+      }
+      this.finishBossAttack(boss);
+    });
+    return true;
+  }
+
   performBossPattern(boss) {
     if (!boss?.active || boss.getData('attacking')) return;
-    const pattern = boss.getData('pattern');
+    const configuredPattern = boss.getData('pattern');
+    const legacyPatterns = CAMPAIGN.slice(0, 5).map(chapter => chapter.bossPattern);
+    let pattern = configuredPattern;
+    if (configuredPattern === 'legacy-random') {
+      const previousPattern = boss.getData('lastLegacyPattern');
+      const candidates = legacyPatterns.filter(candidate => candidate !== previousPattern);
+      pattern = candidates[Phaser.Math.Between(0, candidates.length - 1)];
+      boss.setData('lastLegacyPattern', pattern);
+    }
     const enraged = boss.getData('enraged');
-    boss.nextAttackAt = this.time.now + Math.max(1050, (3100 - this.chapterIndex * 170) * (enraged ? .72 : 1));
+    const attackSpeed = boss.getData('attackSpeedMultiplier') || 1;
+    const timing = milliseconds => Math.max(1, Math.round(milliseconds / attackSpeed));
+    boss.nextAttackAt = this.time.now + Math.max(1000, (3100 - this.chapterIndex * 170) * (enraged ? .72 : 1) / attackSpeed);
     boss.setData('attacking', true);
     boss.setVelocity(0, 0);
     boss.setTint(0xffc2a1);
@@ -2081,10 +2295,10 @@ class GameScene extends Phaser.Scene {
       for (let offset = -1; offset <= 1; offset += 2) {
         line.lineStyle(3, 0xffb43b, .58).lineBetween(boss.x + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, boss.y + Math.sin(chargeAngle + Math.PI / 2) * offset * 18, targetX + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, targetY + Math.sin(chargeAngle + Math.PI / 2) * offset * 18);
       }
-      const targetMark = this.createHazardTelegraph(targetX, targetY, 72, 0xffb43b, 680);
-      this.createHostileMarker(targetX, targetY, 78, 680);
-      this.tweens.add({ targets: line, alpha: 0, duration: 680, onComplete: () => line.destroy() });
-      this.time.delayedCall(620, () => {
+      const targetMark = this.createHazardTelegraph(targetX, targetY, 72, 0xffb43b, timing(680));
+      this.createHostileMarker(targetX, targetY, 78, timing(680));
+      this.tweens.add({ targets: line, alpha: 0, duration: timing(680), onComplete: () => line.destroy() });
+      this.time.delayedCall(timing(620), () => {
         if (!boss.active) {
           targetMark.destroy();
           return;
@@ -2094,7 +2308,7 @@ class GameScene extends Phaser.Scene {
           targets: boss,
           x: targetX,
           y: targetY,
-          duration: 650,
+          duration: timing(650),
           ease: 'Cubic.easeIn',
           onComplete: () => {
             targetMark.destroy();
@@ -2111,10 +2325,10 @@ class GameScene extends Phaser.Scene {
 
     if (pattern === 'pounce') {
       const marker = this.add.circle(targetX, targetY, 70, 0xff4d3c, .15).setStrokeStyle(5, 0xffd170, .9).setDepth(21);
-      this.createHostileMarker(targetX, targetY, 76, 780);
-      this.tweens.add({ targets: marker, scaleX: .55, scaleY: .55, alpha: .8, duration: 760 });
-      this.tweens.add({ targets: boss, y: boss.y - 90, alpha: .48, scaleX: boss.scaleX * .7, scaleY: boss.scaleY * .7, duration: 390, yoyo: true });
-      this.time.delayedCall(780, () => {
+      this.createHostileMarker(targetX, targetY, 76, timing(780));
+      this.tweens.add({ targets: marker, scaleX: .55, scaleY: .55, alpha: .8, duration: timing(760) });
+      this.tweens.add({ targets: boss, y: boss.y - 90, alpha: .48, scaleX: boss.scaleX * .7, scaleY: boss.scaleY * .7, duration: timing(390), yoyo: true });
+      this.time.delayedCall(timing(780), () => {
         marker.destroy();
         if (!boss.active) return;
         boss.setPosition(targetX, targetY);
@@ -2130,9 +2344,9 @@ class GameScene extends Phaser.Scene {
     const warningColor = pattern === 'foxfire' ? 0xff6688 : pattern === 'plague' ? 0x63dce8 : pattern === 'judgment' ? 0x91bfff : 0xffa43b;
     const warning = this.add.circle(boss.x, boss.y, 54, warningColor, .17).setStrokeStyle(6, warningColor, .95).setDepth(23);
     this.createAttackSigil(boss.x, boss.y, warningColor, enraged ? 92 : 74, enraged ? 12 : 8);
-    this.createHostileMarker(boss.x, boss.y, enraged ? 100 : 82, 660);
-    this.tweens.add({ targets: warning, scaleX: .5, scaleY: .5, alpha: .9, yoyo: true, repeat: 1, duration: 250 });
-    this.time.delayedCall(660, () => {
+    this.createHostileMarker(boss.x, boss.y, enraged ? 100 : 82, timing(660));
+    this.tweens.add({ targets: warning, scaleX: .5, scaleY: .5, alpha: .9, yoyo: true, repeat: 1, duration: timing(250) });
+    this.time.delayedCall(timing(660), () => {
       warning.destroy();
       if (!boss.active) return;
       if (pattern === 'smash') {
@@ -2167,7 +2381,7 @@ class GameScene extends Phaser.Scene {
     projectile.setData('lastTrailAt', this.time.now);
     projectile.setData('trailColor', tint);
     projectile.setData('hostile', true);
-    this.physics.velocityFromRotation(angle, speed, projectile.body.velocity);
+    this.physics.velocityFromRotation(angle, speed * (boss.getData('attackSpeedMultiplier') || 1), projectile.body.velocity);
   }
 
   finishBossAttack(boss) {
@@ -2751,7 +2965,7 @@ class GameScene extends Phaser.Scene {
     }
     const { x, y, xpValue, elite, isMidBoss } = enemy;
     const treasureRewardKey = enemy.getData('treasureRewardKey');
-    const shouldDropTreasure = Boolean(isMidBoss && !enemy.getData('treasureDropped'));
+    const shouldDropTreasure = Boolean(isMidBoss && !enemy.getData('noTreasure') && !enemy.getData('treasureDropped'));
     if (shouldDropTreasure) enemy.setData('treasureDropped', true);
     enemy.getData('shadow')?.destroy();
     enemy.destroy();
