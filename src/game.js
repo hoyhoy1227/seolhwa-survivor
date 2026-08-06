@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-6';
+const SPRITE_VERSION = '20260807-7';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -1199,10 +1199,35 @@ class GameScene extends Phaser.Scene {
     if (index === 0) {
       // 장터의 포목 좌판, 깃발, 돌등과 불씨 자국
       [[420,330],[770,1450],[1740,350],[2020,1280]].forEach(([x, y], stall) => {
-        graphics.fillStyle(0x4b2520, .95).fillRoundedRect(x - 52, y - 24, 104, 58, 9);
-        graphics.fillStyle(stall % 2 ? 0x315f6c : 0xa94132, .92).fillTriangle(x - 60, y - 22, x, y - 70, x + 60, y - 22);
-        graphics.lineStyle(4, 0xe3b76b, .85).lineBetween(x - 42, y + 30, x - 42, y + 58).lineBetween(x + 42, y + 30, x + 42, y + 58);
-        for (let flag = 0; flag < 5; flag += 1) graphics.fillStyle(flag % 2 ? 0xffc15e : 0xe85a42, .85).fillTriangle(x - 48 + flag * 24, y - 48, x - 37 + flag * 24, y - 32, x - 25 + flag * 24, y - 48);
+        const roof = stall % 2 ? 0x293534 : 0x303431;
+        const wood = stall % 2 ? 0x593b2a : 0x66412c;
+        const paper = stall % 2 ? 0xd8d0b2 : 0xe2d6b5;
+
+        // 조선 장터의 기와 행랑: 석단, 툇마루와 한지 격자문
+        graphics.fillStyle(0x2c2923, .44).fillEllipse(x, y + 53, 158, 25);
+        graphics.fillStyle(0x776c58, .8).fillRoundedRect(x - 67, y + 40, 134, 12, 3);
+        graphics.fillStyle(0x3d2a20, .98).fillRect(x - 59, y - 20, 118, 64);
+        graphics.fillStyle(paper, .9).fillRect(x - 46, y - 10, 92, 42);
+        graphics.fillStyle(wood, 1).fillRect(x - 62, y - 28, 8, 76).fillRect(x + 54, y - 28, 8, 76);
+        graphics.fillRect(x - 54, y - 17, 108, 7).fillRect(x - 54, y + 33, 108, 7);
+        graphics.lineStyle(3, wood, .9);
+        [-28, 0, 28].forEach(offset => graphics.lineBetween(x + offset, y - 10, x + offset, y + 32));
+        graphics.lineBetween(x - 46, y + 10, x + 46, y + 10);
+
+        // 검은 기와와 위로 들린 처마선
+        graphics.fillStyle(0x181d1d, .98).fillTriangle(x - 76, y - 23, x, y - 72, x + 76, y - 23);
+        graphics.fillStyle(roof, 1).fillTriangle(x - 68, y - 27, x, y - 66, x + 68, y - 27);
+        graphics.fillStyle(0x141919, 1).fillRoundedRect(x - 79, y - 28, 158, 9, 4);
+        graphics.lineStyle(2, 0x66706a, .62);
+        for (let tile = -54; tile <= 54; tile += 18) graphics.lineBetween(x + tile, y - 30, x + tile * .5, y - 62);
+        for (let tile = -63; tile <= 63; tile += 14) graphics.strokeCircle(x + tile, y - 24, 5);
+        graphics.lineStyle(4, 0x252322, 1).lineBetween(x - 12, y - 69, x + 12, y - 69);
+
+        // 행랑 옆 옹기와 낮은 포목 좌판
+        const side = stall % 2 ? -1 : 1;
+        graphics.fillStyle(0x6b3d25, .96).fillEllipse(x + side * 72, y + 35, 18, 23);
+        graphics.fillStyle(0x33251d, .9).fillEllipse(x + side * 72, y + 25, 13, 5);
+        graphics.fillStyle(stall % 2 ? 0x755849 : 0x7b3340, .88).fillRect(x - side * 70 - 18, y + 36, 35, 8);
       });
       for (let stone = 0; stone < 22; stone += 1) {
         const x = 110 + stone * 103;
