@@ -49,24 +49,11 @@
 
 ## 조작법
 
-- 이동: 방향키 또는 `WASD`
+- 이동: 방향키, 커서 또는 `WASD`
 - 마우스/터치: 화면을 누른 방향으로 이동
 - 공격: 가장 가까운 적을 향해 자동 공격
 - 일시정지: 화면 오른쪽 아래 버튼 또는 `Esc`
 
-## 로컬 실행
-
-저장소 루트에서 정적 웹 서버를 실행합니다.
-
-```powershell
-python -m http.server 8000
-```
-
-그다음 <http://localhost:8000>을 엽니다. 브라우저 보안 정책 때문에 `index.html` 파일을 직접 여는 것보다 로컬 서버 사용을 권장합니다.
-
-## GitHub Pages 배포
-
-`main` 브랜치에 푸시하면 [GitHub Actions 배포 워크플로](./.github/workflows/deploy-pages.yml)가 GitHub Pages에 자동으로 배포합니다.
 
 ## 프로젝트 구조
 
