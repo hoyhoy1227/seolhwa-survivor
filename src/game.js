@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-10';
+const SPRITE_VERSION = '20260807-11';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -922,8 +922,12 @@ class GameScene extends Phaser.Scene {
     });
 
     this.physics.add.overlap(this.projectiles, this.enemies, this.onProjectileHit, null, this);
+    this.events.on('postupdate', this.updateChestPickups, this);
 
-    this.events.once('shutdown', () => audio.stopBgm());
+    this.events.once('shutdown', () => {
+      this.events.off('postupdate', this.updateChestPickups, this);
+      audio.stopBgm();
+    });
 
     if (this.initialCharacter) {
       this.time.delayedCall(0, () => this.beginRun(this.initialCharacter));
@@ -1653,7 +1657,6 @@ class GameScene extends Phaser.Scene {
       this
     );
     this.playerOrbOverlap = this.physics.add.overlap(this.player, this.orbs, this.collectOrb, null, this);
-    this.playerChestOverlap = this.physics.add.overlap(this.player, this.chests, this.openChest, null, this);
     this.playerPortalOverlap = this.physics.add.overlap(this.player, this.portals, this.enterPortal, null, this);
 
     hideScreens();
@@ -1677,7 +1680,6 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed += deltaSeconds;
 
     this.updateMovement();
-    this.updateChestPickups();
     this.updateMapDevices(time, deltaSeconds);
     this.updateAmbientScenery(time);
     this.updateDayNight();
@@ -3370,6 +3372,7 @@ class GameScene extends Phaser.Scene {
     chest.body.setAllowGravity(false);
     chest.setData('spawnedAt', this.time.now);
     chest.setData('rewardKey', rewardKey || null);
+    chest.setData('claimed', false);
     this.lastTreasureSpawnAt = this.time.now;
     this.lastTreasurePosition = { x, y };
     this.tweens.add({
@@ -3409,10 +3412,19 @@ class GameScene extends Phaser.Scene {
     this.lastChestCheckPosition = { x: this.player.x, y: this.player.y };
   }
 
+  canCollectChest(chest) {
+    return Boolean(
+      chest?.active
+      && chest.getData('claimed') !== true
+      && this.player?.active
+      && this.state === 'running'
+    );
+  }
+
   findTouchedChest() {
     if (!this.player?.active) return null;
     return this.chests.getChildren().find(chest => {
-      if (!chest.active) return false;
+      if (!this.canCollectChest(chest)) return false;
       const visualRadius = (
         Math.max(this.player.displayWidth, this.player.displayHeight)
         + Math.max(chest.displayWidth, chest.displayHeight)
@@ -3451,7 +3463,8 @@ class GameScene extends Phaser.Scene {
   }
 
   openChest(player, chest) {
-    if (!chest?.active || this.state !== 'running') return;
+    if (!this.canCollectChest(chest)) return false;
+    chest.setData('claimed', true);
     const deferTreasureChoice = this.bossExperienceCollectionActive || this.pendingLevels > 0 || this.pendingTreasureChoices > 0;
     const chestX = chest.x;
     const chestY = chest.y;
@@ -3461,9 +3474,10 @@ class GameScene extends Phaser.Scene {
     if (deferTreasureChoice) {
       this.pendingTreasureChoices += 1;
       this.processPendingChoiceQueue();
-      return;
+      return true;
     }
     this.offerChoices(true);
+    return true;
   }
 
   createChestBurst(x, y) {
