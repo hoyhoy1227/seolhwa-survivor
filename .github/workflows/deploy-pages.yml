@@ -37,6 +37,12 @@ jobs:
           test -s _site/assets/sprites/enemy-gaksi.png
           test -s _site/assets/sprites/enemy-jeoseung.png
           test -s _site/assets/sprites/ground-forest-v2.png
+          test -s _site/assets/sprites/prop-market-landmark-v1.png
+          test -s _site/assets/sprites/prop-fox-shrine-v1.png
+          test -s _site/assets/sprites/prop-golden-gate-v1.png
+          test -s _site/assets/sprites/prop-mountain-shrine-v1.png
+          test -s _site/assets/sprites/prop-moon-court-v1.png
+          test -s _site/assets/sprites/prop-underworld-memorial-v1.png
           find _site -type f -maxdepth 4 -print
 
       - name: Upload static site

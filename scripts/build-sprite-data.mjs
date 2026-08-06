@@ -32,6 +32,12 @@ const spriteFiles = [
   'device-wind-totem.png',
   'device-moon-drum.png',
   'device-soul-well.png',
+  'prop-market-landmark-v1.png',
+  'prop-fox-shrine-v1.png',
+  'prop-golden-gate-v1.png',
+  'prop-mountain-shrine-v1.png',
+  'prop-moon-court-v1.png',
+  'prop-underworld-memorial-v1.png',
   'ground-forest-v2.png'
 ];
 

@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-3';
+const SPRITE_VERSION = '20260807-4';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -170,6 +170,15 @@ const CHAPTER_DEVICE_SPRITES = [
   'device-soul-well.png'
 ];
 
+const CHAPTER_PROP_KEYS = [
+  'prop-market-landmark',
+  'prop-fox-shrine',
+  'prop-golden-gate',
+  'prop-mountain-shrine',
+  'prop-moon-court',
+  'prop-underworld-memorial'
+];
+
 const EMBEDDED_TEXTURE_FILES = Object.freeze({
   dokkaebi: 'dokkaebi.png',
   gumiho: 'gumiho.png',
@@ -195,6 +204,12 @@ const EMBEDDED_TEXTURE_FILES = Object.freeze({
   'device-wind-totem': 'device-wind-totem.png',
   'device-moon-drum': 'device-moon-drum.png',
   'device-soul-well': 'device-soul-well.png',
+  'prop-market-landmark': 'prop-market-landmark-v1.png',
+  'prop-fox-shrine': 'prop-fox-shrine-v1.png',
+  'prop-golden-gate': 'prop-golden-gate-v1.png',
+  'prop-mountain-shrine': 'prop-mountain-shrine-v1.png',
+  'prop-moon-court': 'prop-moon-court-v1.png',
+  'prop-underworld-memorial': 'prop-underworld-memorial-v1.png',
   'ground-forest': 'ground-forest-v2.png'
 });
 
@@ -924,6 +939,7 @@ class GameScene extends Phaser.Scene {
       'device-wind-totem',
       'device-moon-drum',
       'device-soul-well',
+      ...CHAPTER_PROP_KEYS,
       'ground-forest'
     ];
     this.missingSpriteKeys = required.filter(key => !this.textures.exists(key));
@@ -986,7 +1002,8 @@ class GameScene extends Phaser.Scene {
   applyChapterTheme(index) {
     const chapter = CAMPAIGN[index] || CAMPAIGN[0];
     this.groundBase.setFillStyle(chapter.ground, 1);
-    this.ground.setTint(chapter.ground).setAlpha(.92);
+    const groundTextureAlphas = [.64, .34, .24, .46, .3, .2];
+    this.ground.setTint(chapter.ground).setAlpha(groundTextureAlphas[index]);
     const tileScales = [1.08, .78, 1.28, .7, 1.04, .88];
     this.ground.tileScaleX = tileScales[index];
     this.ground.tileScaleY = tileScales[index] * (index === 3 ? .82 : 1);
@@ -1033,6 +1050,7 @@ class GameScene extends Phaser.Scene {
       if (marker % 2 === 0) this.landmarks.fillStyle(chapter.accent, .55).fillCircle(x, y, 4);
     });
     this.drawChapterScenery(index, chapter);
+    this.buildChapterProps(index, chapter);
     this.buildMapDevices(index, chapter);
   }
 
@@ -1260,6 +1278,71 @@ class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  clearChapterProps() {
+    (this.chapterPropObjects || []).forEach(object => {
+      if (!object) return;
+      this.tweens.killTweensOf(object);
+      object.destroy();
+    });
+    this.chapterPropObjects = [];
+  }
+
+  buildChapterProps(index, chapter) {
+    this.clearChapterProps();
+    const layouts = [
+      [
+        [300,260,202,false],[2080,280,186,true],[330,1480,190,true],
+        [2040,1460,210,false],[1010,250,158,true],[1450,1540,166,false]
+      ],
+      [
+        [350,330,190,false],[2030,360,184,true],[390,1420,176,true],
+        [1980,1390,202,false],[1060,250,156,false],[1430,1530,164,true]
+      ],
+      [
+        [310,300,228,false],[2070,300,218,true],[330,1470,210,true],
+        [2050,1460,232,false],[850,250,176,true],[1560,1520,180,false]
+      ],
+      [
+        [330,320,192,false],[2040,350,184,true],[360,1450,202,true],
+        [2020,1430,194,false],[980,250,158,true],[1500,1530,170,false]
+      ],
+      [
+        [330,300,214,false],[2050,310,204,true],[350,1460,196,true],
+        [2020,1450,220,false],[920,250,166,true],[1550,1530,174,false]
+      ],
+      [
+        [310,320,204,false],[2070,340,194,true],[350,1440,190,true],
+        [2030,1420,214,false],[900,260,162,true],[1540,1510,178,false]
+      ]
+    ];
+    const propKey = CHAPTER_PROP_KEYS[index] || CHAPTER_PROP_KEYS[0];
+    const mystical = index === 1 || index === 4 || index === 5;
+
+    (layouts[index] || layouts[0]).forEach(([x, y, size, flipped], order) => {
+      const glow = this.add.ellipse(x, y + size * .08, size * .76, size * .52, chapter.accent, mystical ? .075 : .035)
+        .setDepth(7 + Math.floor(y / 650));
+      const shadow = this.add.ellipse(x, y + size * .33, size * .64, size * .15, 0x030407, .35)
+        .setDepth(8 + Math.floor(y / 650));
+      const prop = this.add.image(x, y, propKey)
+        .setDisplaySize(size, size)
+        .setFlipX(flipped)
+        .setDepth(9 + Math.floor(y / 650));
+      this.chapterPropObjects.push(glow, shadow, prop);
+      if (mystical) {
+        this.tweens.add({
+          targets: glow,
+          alpha: glow.alpha * 2.1,
+          scaleX: 1.1,
+          scaleY: 1.1,
+          yoyo: true,
+          repeat: -1,
+          duration: 1250 + order * 90,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    });
   }
 
   clearMapDevices() {
