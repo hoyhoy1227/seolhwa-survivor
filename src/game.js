@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-4';
+const SPRITE_VERSION = '20260807-5';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -14,6 +14,7 @@ const FINAL_BOSS_SUMMON_LIMIT = 2;
 const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
+const CHEST_PICKUP_RADIUS = 72;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
 const HERO_ATTACK_PALETTES = Object.freeze({
@@ -898,6 +899,7 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
+    this.pendingTreasureChoices = 0;
     this.nextAttackAt = 0;
     this.nextSpawnAt = 0;
     this.nextHazardAt = 7000;
@@ -1573,6 +1575,7 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
+    this.pendingTreasureChoices = 0;
     this.chapterIndex = 0;
     this.chapterKills = 0;
     this.totalElapsed = 0;
@@ -1641,6 +1644,7 @@ class GameScene extends Phaser.Scene {
     this.totalElapsed += deltaSeconds;
 
     this.updateMovement();
+    this.updateChestPickups();
     this.updateMapDevices(time, deltaSeconds);
     this.updateAmbientScenery(time);
     this.updateDayNight();
@@ -3130,7 +3134,12 @@ class GameScene extends Phaser.Scene {
   finishBossExperienceCollection() {
     if (!this.bossExperienceCollectionActive) return;
     this.bossExperienceCollectionActive = false;
-    if (this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
+    if (this.state !== 'running') return;
+    if (this.pendingLevels > 0) {
+      this.offerChoices(false);
+      return;
+    }
+    this.offerPendingTreasureChoice();
   }
 
   spawnPortal(x, y) {
@@ -3225,8 +3234,10 @@ class GameScene extends Phaser.Scene {
     this.state = 'running';
     audio.startBgm();
     showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name} 전투 시작`, 2600);
-    if (this.pendingLevels > 0 && !this.bossExperienceCollectionActive) this.time.delayedCall(80, () => {
-      if (this.state === 'running') this.offerChoices(false);
+    if (!this.bossExperienceCollectionActive) this.time.delayedCall(80, () => {
+      if (this.state !== 'running') return;
+      if (this.pendingLevels > 0) this.offerChoices(false);
+      else this.offerPendingTreasureChoice();
     });
   }
 
@@ -3332,14 +3343,42 @@ class GameScene extends Phaser.Scene {
     showToast(`보물상자가 나타났습니다! 지도에서 ${location}을 확인하세요.`, 3200);
   }
 
+  updateChestPickups() {
+    if (this.state !== 'running' || !this.player?.active) return;
+    const touchedChest = this.chests.getChildren().find(chest => chest.active && (
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) <= CHEST_PICKUP_RADIUS
+    ));
+    if (touchedChest) this.openChest(this.player, touchedChest);
+  }
+
+  offerPendingTreasureChoice() {
+    if (
+      this.pendingTreasureChoices <= 0
+      || this.state !== 'running'
+      || this.bossExperienceCollectionActive
+      || this.pendingLevels > 0
+    ) return false;
+    this.pendingTreasureChoices -= 1;
+    this.offerChoices(true);
+    return true;
+  }
+
   openChest(player, chest) {
     if (!chest?.active || this.state !== 'running') return;
-    if (this.bossExperienceCollectionActive || this.pendingLevels > 0) {
-      if (!this.bossExperienceCollectionActive && this.pendingLevels > 0) this.offerChoices(false);
+    const deferTreasureChoice = this.bossExperienceCollectionActive || this.pendingLevels > 0 || this.pendingTreasureChoices > 0;
+    const chestX = chest.x;
+    const chestY = chest.y;
+    this.tweens.killTweensOf(chest);
+    this.createChestBurst(chestX, chestY);
+    chest.destroy();
+    if (deferTreasureChoice) {
+      this.pendingTreasureChoices += 1;
+      if (!this.bossExperienceCollectionActive) {
+        if (this.pendingLevels > 0) this.offerChoices(false);
+        else this.offerPendingTreasureChoice();
+      }
       return;
     }
-    this.createChestBurst(chest.x, chest.y);
-    chest.destroy();
     this.offerChoices(true);
   }
 
@@ -3398,6 +3437,7 @@ class GameScene extends Phaser.Scene {
         this.physics.resume();
         this.updateHud();
         showToast(`${skill.title} 획득!`);
+        this.offerPendingTreasureChoice();
       }, { once: true });
       ui.choiceGrid.appendChild(button);
     });
