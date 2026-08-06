@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-5';
+const SPRITE_VERSION = '20260807-6';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -1649,6 +1649,8 @@ class GameScene extends Phaser.Scene {
     this.updateAmbientScenery(time);
     this.updateDayNight();
     this.updateEnemiesAndPickups(deltaSeconds);
+    this.reconcileBossExperienceCollection();
+    if (this.state !== 'running' || this.processPendingChoiceQueue()) return;
     this.updateSecondaryWeapons(time);
     this.updateStageHazards(time);
 
@@ -3134,12 +3136,15 @@ class GameScene extends Phaser.Scene {
   finishBossExperienceCollection() {
     if (!this.bossExperienceCollectionActive) return;
     this.bossExperienceCollectionActive = false;
-    if (this.state !== 'running') return;
-    if (this.pendingLevels > 0) {
-      this.offerChoices(false);
-      return;
-    }
-    this.offerPendingTreasureChoice();
+    this.processPendingChoiceQueue();
+  }
+
+  reconcileBossExperienceCollection() {
+    if (!this.bossExperienceCollectionActive) return;
+    const hasVacuumOrbs = this.orbs.getChildren().some(orb => (
+      orb.active && orb.getData('bossVacuum') === true
+    ));
+    if (!hasVacuumOrbs) this.finishBossExperienceCollection();
   }
 
   spawnPortal(x, y) {
@@ -3235,9 +3240,7 @@ class GameScene extends Phaser.Scene {
     audio.startBgm();
     showToast(`설화 ${this.chapterIndex + 1} · ${chapter.name} 전투 시작`, 2600);
     if (!this.bossExperienceCollectionActive) this.time.delayedCall(80, () => {
-      if (this.state !== 'running') return;
-      if (this.pendingLevels > 0) this.offerChoices(false);
-      else this.offerPendingTreasureChoice();
+      this.processPendingChoiceQueue();
     });
   }
 
@@ -3280,7 +3283,7 @@ class GameScene extends Phaser.Scene {
       this.pendingLevels += 1;
     }
     this.updateHud();
-    if (offerLevelChoice && this.pendingLevels > 0 && this.state === 'running') this.offerChoices(false);
+    if (offerLevelChoice) this.processPendingChoiceQueue();
   }
 
   resolveTreasureSpawnPosition(forcedX, forcedY) {
@@ -3351,6 +3354,15 @@ class GameScene extends Phaser.Scene {
     if (touchedChest) this.openChest(this.player, touchedChest);
   }
 
+  processPendingChoiceQueue() {
+    if (this.state !== 'running' || this.bossExperienceCollectionActive) return false;
+    if (this.pendingLevels > 0) {
+      this.offerChoices(false);
+      return true;
+    }
+    return this.offerPendingTreasureChoice();
+  }
+
   offerPendingTreasureChoice() {
     if (
       this.pendingTreasureChoices <= 0
@@ -3373,10 +3385,7 @@ class GameScene extends Phaser.Scene {
     chest.destroy();
     if (deferTreasureChoice) {
       this.pendingTreasureChoices += 1;
-      if (!this.bossExperienceCollectionActive) {
-        if (this.pendingLevels > 0) this.offerChoices(false);
-        else this.offerPendingTreasureChoice();
-      }
+      this.processPendingChoiceQueue();
       return;
     }
     this.offerChoices(true);
@@ -3437,7 +3446,7 @@ class GameScene extends Phaser.Scene {
         this.physics.resume();
         this.updateHud();
         showToast(`${skill.title} 획득!`);
-        this.offerPendingTreasureChoice();
+        this.processPendingChoiceQueue();
       }, { once: true });
       ui.choiceGrid.appendChild(button);
     });
