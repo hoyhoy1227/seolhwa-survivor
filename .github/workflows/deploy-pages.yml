@@ -1,8 +1,6 @@
-name: Deploy game to GitHub Pages
+name: Manual Pages artifact deployment
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
