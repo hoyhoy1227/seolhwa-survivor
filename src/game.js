@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260805-8';
+const SPRITE_VERSION = '20260806-1';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -1715,16 +1715,20 @@ class GameScene extends Phaser.Scene {
     const progress = Phaser.Math.Clamp(this.elapsed / NIGHT_START, 0, 1);
     const overtime = Phaser.Math.Clamp((this.elapsed - NIGHT_START) / 45, 0, .7);
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
-    const laterChapterPressure = 1 + this.chapterIndex * .18;
-    const cap = Math.min(150, 30 + this.chapterIndex * 18 + Math.floor(progress * (42 + this.chapterIndex * 5) + overtime * 18));
+    const laterMap = this.chapterIndex > 0;
+    const laterChapterPressure = laterMap ? 1.45 + this.chapterIndex * .22 : 1;
+    const cap = Math.min(210, 30 + this.chapterIndex * 28 + Math.floor(progress * (42 + this.chapterIndex * 8) + overtime * (18 + this.chapterIndex * 4)));
     if (this.enemies.countActive(true) >= cap) {
       this.nextSpawnAt = this.time.now + 320;
       return;
     }
     const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) / laterChapterPressure;
-    const batch = 1 + Math.floor(progress * 2.65) + Math.ceil(this.chapterIndex * .7) + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
+    const laterMapBatch = laterMap ? 2 + Math.floor(this.chapterIndex * .8) : 0;
+    const batch = 1 + Math.floor(progress * 2.65) + laterMapBatch + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
     for (let index = 0; index < batch; index += 1) this.spawnEnemy(false);
-    this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(360, interval * 1.08) : Math.max(180, interval));
+    const minimumInterval = laterMap ? Math.max(105, 165 - this.chapterIndex * 12) : 180;
+    const bossInterval = laterMap ? Math.max(190, 340 - this.chapterIndex * 28) : 360;
+    this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(bossInterval, interval * .9) : Math.max(minimumInterval, interval));
   }
 
   spawnEnemy(forceElite = false) {
@@ -1761,10 +1765,12 @@ class GameScene extends Phaser.Scene {
     enemy.setData('shadow', shadow);
     const typeIndex = ranged ? 2 : texture === 'enemy-gaksi' ? 1 : 0;
     enemy.setData('folkName', chapter.enemyNames[typeIndex]);
-    enemy.hp = (18 + this.level * 4 + stageProgress * 18 + this.chapterIndex * 7) * chapter.hpScale * (elite ? 3 : 1);
+    const laterEnemyHpScale = this.chapterIndex === 0 ? 1 : 1.5 + this.chapterIndex * .25;
+    const laterEnemyDamageScale = this.chapterIndex === 0 ? 1 : 1.3 + this.chapterIndex * .2;
+    enemy.hp = (18 + this.level * 4 + stageProgress * 18 + this.chapterIndex * 7) * chapter.hpScale * laterEnemyHpScale * (elite ? 3 : 1);
     enemy.maxHp = enemy.hp;
     enemy.speed = ((ranged ? 29 : 36) + stageProgress * (ranged ? 16 : 28) + (elite ? 4 : 0)) * chapter.speedScale;
-    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale;
+    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale * laterEnemyDamageScale;
     enemy.xpValue = elite ? 8 : ranged ? 4 : 3;
     enemy.elite = elite;
     enemy.kind = ranged ? 'ranged' : 'melee';
@@ -1785,9 +1791,9 @@ class GameScene extends Phaser.Scene {
     enemy.isMidBoss = true;
     enemy.setDisplaySize(enemy.displayWidth * sizeScale, enemy.displayHeight * sizeScale).setDepth(22);
     const laterChapter = this.chapterIndex === 0 ? 0 : this.chapterIndex;
-    enemy.hp *= 3.4 + laterChapter * .85;
+    enemy.hp *= 3.4 + laterChapter * 1.1;
     enemy.maxHp = enemy.hp;
-    enemy.damage *= 1.38 + laterChapter * .18;
+    enemy.damage *= 1.38 + laterChapter * .28;
     enemy.speed *= .9;
     enemy.xpValue = 18 + this.chapterIndex * 4;
     enemy.setData('folkName', `${order + 1}번째 중간 수호자 · ${enemy.getData('folkName')}`);
@@ -1859,8 +1865,8 @@ class GameScene extends Phaser.Scene {
     const boss = this.enemies.create(x, y, chapter.bossTexture).setDisplaySize(190, 190).setDepth(24);
     boss.body.setCircle(88, 40, 74);
     boss.kind = 'boss';
-    const laterBossHpScale = this.chapterIndex === 0 ? 1 : 1.18 + this.chapterIndex * .12;
-    const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.08 + this.chapterIndex * .1;
+    const laterBossHpScale = this.chapterIndex === 0 ? 1 : 2.05 + this.chapterIndex * .35;
+    const laterBossDamageScale = this.chapterIndex === 0 ? 1 : 1.35 + this.chapterIndex * .22;
     boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale;
     boss.maxHp = boss.hp;
     boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale;
