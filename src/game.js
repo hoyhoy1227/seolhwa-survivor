@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-3';
+const SPRITE_VERSION = '20260806-4';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -12,6 +12,17 @@ const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
+const HERO_ATTACK_PALETTES = Object.freeze({
+  dokkaebi: Object.freeze({ primary: 0xff9a32, secondary: 0xffe29a }),
+  gumiho: Object.freeze({ primary: 0xff4f9a, secondary: 0xffb2d4 }),
+  haechi: Object.freeze({ primary: 0xffcf47, secondary: 0xfff4b8 }),
+  sansin: Object.freeze({ primary: 0x58d88a, secondary: 0xd8f3b7 }),
+  cheoyong: Object.freeze({ primary: 0xa56bea, secondary: 0xf0b5ff }),
+  baridegi: Object.freeze({ primary: 0x49c8f0, secondary: 0xc9f3ff }),
+  sejong: Object.freeze({ primary: 0x526bd8, secondary: 0xffedc2 })
+});
+const HOSTILE_ATTACK_COLOR = 0xff4055;
+const HOSTILE_ATTACK_DARK = 0x26050c;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
@@ -1208,11 +1219,13 @@ class GameScene extends Phaser.Scene {
 
     if (!this.textures.exists('enemy-projectile')) {
       const graphics = this.make.graphics({ add: false });
-      graphics.fillStyle(0xd47bff, .35);
+      graphics.fillStyle(HOSTILE_ATTACK_COLOR, .34);
       graphics.fillCircle(8, 8, 8);
-      graphics.fillStyle(0xcab0ff, 1);
+      graphics.fillStyle(HOSTILE_ATTACK_DARK, 1);
+      graphics.fillCircle(8, 8, 6);
+      graphics.fillStyle(0xff5264, 1);
       graphics.fillCircle(8, 8, 5);
-      graphics.fillStyle(0xffffff, 1);
+      graphics.fillStyle(0xffd2a1, 1);
       graphics.fillCircle(7, 6, 2);
       graphics.generateTexture('enemy-projectile', 16, 16);
       graphics.destroy();
@@ -1775,8 +1788,11 @@ class GameScene extends Phaser.Scene {
       projectile.setAngle(projectile.angle + 9);
       if (this.time.now - (projectile.getData('lastTrailAt') || 0) > 65) {
         projectile.setData('lastTrailAt', this.time.now);
-        const trailColor = projectile.getData('trailColor') || 0xd8a8ff;
-        const trail = this.add.circle(projectile.x, projectile.y, projectile.displayWidth > 20 ? 7 : 5, trailColor, .62).setStrokeStyle(2, 0xffffff, .32).setDepth(23);
+        const trailColor = projectile.getData('trailColor') || HOSTILE_ATTACK_COLOR;
+        const trail = this.add.circle(projectile.x, projectile.y, projectile.displayWidth > 20 ? 7 : 5, trailColor, .56)
+          .setStrokeStyle(3, HOSTILE_ATTACK_DARK, .92)
+          .setDepth(23)
+          .setAngle(45);
         this.tweens.add({
           targets: trail,
           alpha: 0,
@@ -1906,15 +1922,18 @@ class GameScene extends Phaser.Scene {
     if (!enemy?.active || this.state !== 'running' || enemy.getData('casting')) return;
     enemy.nextAttackAt = this.time.now + Phaser.Math.Between(2600, 3800);
     enemy.setData('casting', true);
-    enemy.setTint(0xe9b0ff);
+    enemy.setTint(0xff6b5e);
 
     const warning = this.add.graphics().setDepth(22);
-    warning.lineStyle(3, 0xe5a8ff, .72);
+    warning.lineStyle(7, HOSTILE_ATTACK_DARK, .68);
     warning.lineBetween(enemy.x, enemy.y, this.player.x, this.player.y);
-    warning.fillStyle(0xb94ee8, .28);
+    warning.lineStyle(3, HOSTILE_ATTACK_COLOR, .92);
+    warning.lineBetween(enemy.x, enemy.y, this.player.x, this.player.y);
+    warning.fillStyle(HOSTILE_ATTACK_DARK, .34);
     warning.fillCircle(enemy.x, enemy.y, 31);
-    warning.lineStyle(3, 0xf3d3ff, .9);
+    warning.lineStyle(3, 0xff765e, .95);
     warning.strokeCircle(enemy.x, enemy.y, 28);
+    this.createHostileMarker(enemy.x, enemy.y, 34, 520);
     this.tweens.add({
       targets: warning,
       alpha: .25,
@@ -1933,13 +1952,18 @@ class GameScene extends Phaser.Scene {
       const fireAngle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
       const projectile = this.enemyProjectiles.create(enemy.x, enemy.y, 'enemy-projectile')
         .setDisplaySize(18, 18)
-        .setDepth(24);
+        .setDepth(24)
+        .setTint(HOSTILE_ATTACK_COLOR);
       projectile.damage = enemy.damage;
       projectile.setData('bornAt', this.time.now);
       projectile.setData('lastTrailAt', this.time.now);
+      projectile.setData('hostile', true);
+      projectile.setData('trailColor', HOSTILE_ATTACK_COLOR);
       this.physics.velocityFromRotation(fireAngle, enemy.elite ? 124 : 108, projectile.body.velocity);
 
-      const muzzle = this.add.circle(enemy.x, enemy.y, 12, 0xf2c7ff, .9).setDepth(25);
+      const muzzle = this.add.circle(enemy.x, enemy.y, 12, HOSTILE_ATTACK_COLOR, .9)
+        .setStrokeStyle(4, HOSTILE_ATTACK_DARK, 1)
+        .setDepth(25);
       this.tweens.add({
         targets: muzzle,
         alpha: 0,
@@ -2030,6 +2054,7 @@ class GameScene extends Phaser.Scene {
         line.lineStyle(3, 0xffb43b, .58).lineBetween(boss.x + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, boss.y + Math.sin(chargeAngle + Math.PI / 2) * offset * 18, targetX + Math.cos(chargeAngle + Math.PI / 2) * offset * 18, targetY + Math.sin(chargeAngle + Math.PI / 2) * offset * 18);
       }
       const targetMark = this.createHazardTelegraph(targetX, targetY, 72, 0xffb43b, 680);
+      this.createHostileMarker(targetX, targetY, 78, 680);
       this.tweens.add({ targets: line, alpha: 0, duration: 680, onComplete: () => line.destroy() });
       this.time.delayedCall(620, () => {
         if (!boss.active) {
@@ -2058,6 +2083,7 @@ class GameScene extends Phaser.Scene {
 
     if (pattern === 'pounce') {
       const marker = this.add.circle(targetX, targetY, 70, 0xff4d3c, .15).setStrokeStyle(5, 0xffd170, .9).setDepth(21);
+      this.createHostileMarker(targetX, targetY, 76, 780);
       this.tweens.add({ targets: marker, scaleX: .55, scaleY: .55, alpha: .8, duration: 760 });
       this.tweens.add({ targets: boss, y: boss.y - 90, alpha: .48, scaleX: boss.scaleX * .7, scaleY: boss.scaleY * .7, duration: 390, yoyo: true });
       this.time.delayedCall(780, () => {
@@ -2076,6 +2102,7 @@ class GameScene extends Phaser.Scene {
     const warningColor = pattern === 'foxfire' ? 0xff6688 : pattern === 'plague' ? 0x63dce8 : pattern === 'judgment' ? 0x91bfff : 0xffa43b;
     const warning = this.add.circle(boss.x, boss.y, 54, warningColor, .17).setStrokeStyle(6, warningColor, .95).setDepth(23);
     this.createAttackSigil(boss.x, boss.y, warningColor, enraged ? 92 : 74, enraged ? 12 : 8);
+    this.createHostileMarker(boss.x, boss.y, enraged ? 100 : 82, 660);
     this.tweens.add({ targets: warning, scaleX: .5, scaleY: .5, alpha: .9, yoyo: true, repeat: 1, duration: 250 });
     this.time.delayedCall(660, () => {
       warning.destroy();
@@ -2106,11 +2133,12 @@ class GameScene extends Phaser.Scene {
 
   createBossProjectile(boss, angle, speed, tint) {
     if (!boss?.active) return;
-    const projectile = this.enemyProjectiles.create(boss.x, boss.y, 'enemy-projectile').setDisplaySize(24, 24).setDepth(26).setTint(tint);
+    const projectile = this.enemyProjectiles.create(boss.x, boss.y, 'enemy-projectile').setDisplaySize(24, 24).setDepth(26).setTint(HOSTILE_ATTACK_COLOR);
     projectile.damage = boss.damage * .72;
     projectile.setData('bornAt', this.time.now);
     projectile.setData('lastTrailAt', this.time.now);
     projectile.setData('trailColor', tint);
+    projectile.setData('hostile', true);
     this.physics.velocityFromRotation(angle, speed, projectile.body.velocity);
   }
 
@@ -2159,6 +2187,8 @@ class GameScene extends Phaser.Scene {
   launchProjectile(target, texture, options = {}) {
     if (!target?.active) return null;
     const angle = (options.angle ?? Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y));
+    const heroPalette = HERO_ATTACK_PALETTES[this.selectedCharacter.id] || { primary: 0xffffff, secondary: 0xffffff };
+    const impactColor = options.impactColor || options.tint || heroPalette.primary;
     const projectile = this.projectiles.create(this.player.x, this.player.y, texture)
       .setDisplaySize((options.width || 18) * this.stats.projectileSize, (options.height || options.width || 18) * this.stats.projectileSize)
       .setDepth(25);
@@ -2174,7 +2204,11 @@ class GameScene extends Phaser.Scene {
     projectile.setData('chain', options.chain || 0);
     projectile.setData('spin', Boolean(options.spin));
     projectile.setData('ricochet', this.stats.ricochet);
-    projectile.setTint(damage.critical ? 0xffef62 : options.tint || 0xffffff);
+    projectile.setData('friendly', true);
+    projectile.setData('ownerCharacter', this.selectedCharacter.id);
+    projectile.setData('impactColor', impactColor);
+    projectile.setData('trailColor', options.trailColor || impactColor);
+    projectile.setTint(options.tint || heroPalette.primary);
     this.physics.velocityFromRotation(angle, (options.speed || 430) * this.stats.projectileSpeed, projectile.body.velocity);
     return projectile;
   }
@@ -2210,7 +2244,9 @@ class GameScene extends Phaser.Scene {
     projectile.setData('ricochet', this.stats.ricochet);
     projectile.setData('hangul', true);
     projectile.setData('trailColor', palette.trail);
-    if (damage.critical) projectile.setTint(0xffef62);
+    projectile.setData('friendly', true);
+    projectile.setData('ownerCharacter', 'sejong');
+    projectile.setData('impactColor', palette.impact || HERO_ATTACK_PALETTES.sejong.primary);
     this.physics.velocityFromRotation(angle, (options.speed || 485) * this.stats.projectileSpeed, projectile.body.velocity);
     return projectile;
   }
@@ -2243,7 +2279,7 @@ class GameScene extends Phaser.Scene {
     this.createAttackSigil(this.player.x, this.player.y, 0xff739d, 48 + count * 5, 9);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
-      this.launchProjectile(target, 'foxfire', { width: 22, multiplier: .94, speed: 340, homing: true, splash: 46 * this.stats.areaScale, tint: 0xff8396, life: 2600 });
+      this.launchProjectile(target, 'foxfire', { width: 22, multiplier: .94, speed: 340, homing: true, splash: 46 * this.stats.areaScale, tint: HERO_ATTACK_PALETTES.gumiho.primary, life: 2600 });
     }
   }
 
@@ -2265,7 +2301,7 @@ class GameScene extends Phaser.Scene {
       struck += 1;
       this.damageEnemy(enemy, this.rollDamage(1.08).amount, { knockback: 118, color: 0xffd457 });
     });
-    if (!struck) this.launchProjectile(targets[0].enemy, 'projectile', { width: 18, multiplier: .82, speed: 380, tint: 0xffd457 });
+    if (!struck) this.launchProjectile(targets[0].enemy, 'projectile', { width: 18, multiplier: .82, speed: 380, tint: HERO_ATTACK_PALETTES.haechi.primary });
   }
 
   attackSansin(targets) {
@@ -2276,7 +2312,7 @@ class GameScene extends Phaser.Scene {
       const target = targets[index % Math.min(count, targets.length)].enemy;
       const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
       const spread = count > 1 ? (index - (count - 1) / 2) * .085 : 0;
-      this.launchProjectile(target, 'arrow', { width: 30, height: 16, multiplier: 1.12, speed: 620, angle: baseAngle + spread, pierce: 2 + Math.floor(count / 2), tint: 0xdff2b1, life: 2300 });
+      this.launchProjectile(target, 'arrow', { width: 30, height: 16, multiplier: 1.12, speed: 620, angle: baseAngle + spread, pierce: 2 + Math.floor(count / 2), tint: HERO_ATTACK_PALETTES.sansin.primary, life: 2300 });
     }
   }
 
@@ -2284,7 +2320,7 @@ class GameScene extends Phaser.Scene {
     const nearby = targets.filter(target => target.distance <= 225 * this.stats.areaScale).slice(0, 2 + Math.floor(this.stats.projectiles));
     this.createAttackSigil(this.player.x, this.player.y, 0xc39aed, 52 * this.stats.areaScale, 5);
     if (!nearby.length) {
-      this.launchProjectile(targets[0].enemy, 'dance-blade', { width: 25, multiplier: .88, speed: 460, spin: true, ricochet: 1, tint: 0xcbb0ff });
+      this.launchProjectile(targets[0].enemy, 'dance-blade', { width: 25, multiplier: .88, speed: 460, spin: true, ricochet: 1, tint: HERO_ATTACK_PALETTES.cheoyong.primary });
       return;
     }
     nearby.forEach(({ enemy }, index) => {
@@ -2301,7 +2337,7 @@ class GameScene extends Phaser.Scene {
     this.createAttackSigil(this.player.x, this.player.y, 0xa8ddff, 54 + count * 4, 6);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
-      this.launchProjectile(target, 'spirit-bloom', { width: 25, multiplier: .88, speed: 370, homing: true, chain: 2, tint: 0xaedcff, life: 2700 });
+      this.launchProjectile(target, 'spirit-bloom', { width: 25, multiplier: .88, speed: 370, homing: true, chain: 2, tint: HERO_ATTACK_PALETTES.baridegi.primary, life: 2700 });
     }
     if (this.attackSequence % 5 === 0) {
       this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + 2 + this.level * .15);
@@ -2312,11 +2348,11 @@ class GameScene extends Phaser.Scene {
   attackSejong(targets) {
     const count = Math.max(2, Math.floor(this.stats.projectiles));
     const palettes = [
-      { fill: '#fff0a1', stroke: '#5a2730', trail: 0xf4c85c },
-      { fill: '#ffffff', stroke: '#7b2c32', trail: 0xffe9b0 },
-      { fill: '#bfe5ff', stroke: '#263a6e', trail: 0x83c7ff }
+      { fill: '#fff0cf', stroke: '#263a78', trail: 0x526bd8, impact: 0x526bd8 },
+      { fill: '#cdd6ff', stroke: '#18284f', trail: 0x7f92f0, impact: 0x657ae3 },
+      { fill: '#fffdf3', stroke: '#334c9b', trail: 0xd2b66d, impact: 0x526bd8 }
     ];
-    this.createAttackSigil(this.player.x, this.player.y, 0xe2b957, 58 + count * 4, 14);
+    this.createAttackSigil(this.player.x, this.player.y, HERO_ATTACK_PALETTES.sejong.primary, 58 + count * 4, 14);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index % Math.min(count, targets.length)].enemy;
       const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
@@ -2338,13 +2374,14 @@ class GameScene extends Phaser.Scene {
     if (projectile.getData('lastEnemy') === enemy && this.time.now < (projectile.getData('lastHitAt') || 0) + 180) return;
     projectile.setData('lastEnemy', enemy);
     projectile.setData('lastHitAt', this.time.now);
-    this.damageEnemy(enemy, projectile.damage, { color: projectile.tintTopLeft || 0xffffff });
+    const impactColor = projectile.getData('impactColor') || projectile.tintTopLeft || 0xffffff;
+    this.damageEnemy(enemy, projectile.damage, { color: impactColor });
 
     const splash = projectile.getData('splash') || 0;
     if (splash > 0) {
-      this.createImpactBurst(enemy.x, enemy.y, 0xff607a, splash);
+      this.createImpactBurst(enemy.x, enemy.y, impactColor, splash);
       this.enemies.getChildren().filter(other => other.active && other !== enemy).forEach(other => {
-        if (Phaser.Math.Distance.Between(enemy.x, enemy.y, other.x, other.y) <= splash) this.damageEnemy(other, projectile.damage * .48, { color: 0xff8a9c });
+        if (Phaser.Math.Distance.Between(enemy.x, enemy.y, other.x, other.y) <= splash) this.damageEnemy(other, projectile.damage * .48, { color: impactColor });
       });
     }
     if (projectile.getData('chain') > 0) this.chainDamage(enemy, projectile.damage * .55, projectile.getData('chain'));
@@ -2448,12 +2485,12 @@ class GameScene extends Phaser.Scene {
 
   createHeroSlash(x, y, index = 0) {
     const slash = this.add.graphics().setDepth(38);
-    slash.lineStyle(9, index % 2 ? 0xffd774 : 0xd1b1ff, .95);
+    slash.lineStyle(9, index % 2 ? HERO_ATTACK_PALETTES.cheoyong.secondary : HERO_ATTACK_PALETTES.cheoyong.primary, .95);
     slash.beginPath().arc(x, y, 34 * this.stats.areaScale, -1.8 + index, .8 + index).strokePath();
     slash.lineStyle(3, 0xffffff, .82).beginPath().arc(x, y, 25 * this.stats.areaScale, -1.65 + index, .65 + index).strokePath();
     for (let ribbon = 0; ribbon < 4; ribbon += 1) {
       const angle = index + ribbon / 4 * Math.PI * 2;
-      slash.lineStyle(2, 0xa879dc, .6).lineBetween(x + Math.cos(angle) * 12, y + Math.sin(angle) * 12, x + Math.cos(angle + .35) * 48, y + Math.sin(angle + .35) * 48);
+      slash.lineStyle(2, 0x6f38aa, .72).lineBetween(x + Math.cos(angle) * 12, y + Math.sin(angle) * 12, x + Math.cos(angle + .35) * 48, y + Math.sin(angle + .35) * 48);
     }
     this.tweens.add({ targets: slash, alpha: 0, angle: 35, scaleX: 1.25, scaleY: 1.25, duration: 230, onComplete: () => slash.destroy() });
   }
@@ -2471,6 +2508,23 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: sigil, angle: 35, scaleX: 1.22, scaleY: 1.22, alpha: 0, duration: 420, ease: 'Cubic.easeOut', onComplete: () => sigil.destroy() });
   }
 
+  createHostileMarker(x, y, radius, duration = 520) {
+    const marker = this.add.graphics({ x, y }).setDepth(35);
+    marker.lineStyle(5, HOSTILE_ATTACK_DARK, .96).strokeCircle(0, 0, radius);
+    marker.lineStyle(2, HOSTILE_ATTACK_COLOR, .98).strokeCircle(0, 0, radius - 4);
+    for (let spoke = 0; spoke < 4; spoke += 1) {
+      const angle = spoke / 4 * Math.PI * 2;
+      marker.lineStyle(4, HOSTILE_ATTACK_COLOR, .92).lineBetween(
+        Math.cos(angle) * radius * .62,
+        Math.sin(angle) * radius * .62,
+        Math.cos(angle) * radius * 1.12,
+        Math.sin(angle) * radius * 1.12
+      );
+    }
+    this.tweens.add({ targets: marker, angle: 45, scaleX: .72, scaleY: .72, alpha: 0, duration, onComplete: () => marker.destroy() });
+    return marker;
+  }
+
   createProjectileTrail(projectile) {
     if (!projectile?.active) return;
     if (projectile.getData('hangul')) {
@@ -2485,23 +2539,23 @@ class GameScene extends Phaser.Scene {
     if (texture === 'arrow') {
       const angle = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
       const trail = this.add.graphics().setDepth(23);
-      trail.lineStyle(5, 0xc7edaa, .5).lineBetween(projectile.x, projectile.y, projectile.x - Math.cos(angle) * 34, projectile.y - Math.sin(angle) * 34);
+      trail.lineStyle(5, HERO_ATTACK_PALETTES.sansin.primary, .52).lineBetween(projectile.x, projectile.y, projectile.x - Math.cos(angle) * 34, projectile.y - Math.sin(angle) * 34);
       trail.lineStyle(2, 0xffffff, .7).lineBetween(projectile.x, projectile.y, projectile.x - Math.cos(angle) * 20, projectile.y - Math.sin(angle) * 20);
       this.tweens.add({ targets: trail, alpha: 0, duration: 170, onComplete: () => trail.destroy() });
       return;
     }
     if (texture === 'dance-blade') {
       const trail = this.add.graphics().setDepth(23);
-      trail.lineStyle(5, 0xbc8bea, .58).beginPath().arc(projectile.x, projectile.y, 15, projectile.rotation - 1.3, projectile.rotation + .5).strokePath();
+      trail.lineStyle(5, HERO_ATTACK_PALETTES.cheoyong.primary, .62).beginPath().arc(projectile.x, projectile.y, 15, projectile.rotation - 1.3, projectile.rotation + .5).strokePath();
       this.tweens.add({ targets: trail, alpha: 0, scaleX: 1.35, scaleY: 1.35, duration: 210, onComplete: () => trail.destroy() });
       return;
     }
     if (texture === 'spirit-bloom') {
-      const trail = this.add.circle(projectile.x, projectile.y, 5, 0xa9dfff, .52).setStrokeStyle(2, 0xffffff, .48).setDepth(23);
+      const trail = this.add.circle(projectile.x, projectile.y, 5, HERO_ATTACK_PALETTES.baridegi.primary, .52).setStrokeStyle(2, HERO_ATTACK_PALETTES.baridegi.secondary, .58).setDepth(23);
       this.tweens.add({ targets: trail, y: trail.y - 12, angle: 90, alpha: 0, scaleX: .2, scaleY: .2, duration: 330, onComplete: () => trail.destroy() });
       return;
     }
-    const color = texture === 'foxfire' ? 0xff718f : 0xffe18a;
+    const color = projectile.getData('trailColor') || (texture === 'foxfire' ? HERO_ATTACK_PALETTES.gumiho.primary : HERO_ATTACK_PALETTES.haechi.primary);
     const trail = this.add.circle(projectile.x, projectile.y, texture === 'foxfire' ? 6 : 4, color, .55).setDepth(23);
     this.tweens.add({ targets: trail, alpha: 0, scaleX: .2, scaleY: .2, duration: 260, onComplete: () => trail.destroy() });
   }
@@ -3027,7 +3081,7 @@ class GameScene extends Phaser.Scene {
     enemy.nextAttackAt = this.time.now + Phaser.Math.Between(1900, 2800);
     enemy.setData('attacking', true);
     enemy.setVelocity(0, 0);
-    enemy.setTint(0xffc55c);
+    enemy.setTint(0xff6b5e);
 
     const startX = enemy.x;
     const startY = enemy.y;
@@ -3045,9 +3099,10 @@ class GameScene extends Phaser.Scene {
       ease: 'Cubic.easeOut'
     });
 
-    const warning = this.add.circle(enemy.x, enemy.y, 34, 0xff3f2f, .14)
-      .setStrokeStyle(4, 0xffc55c, .92)
+    const warning = this.add.circle(enemy.x, enemy.y, 34, HOSTILE_ATTACK_DARK, .3)
+      .setStrokeStyle(4, HOSTILE_ATTACK_COLOR, .96)
       .setDepth(19);
+    this.createHostileMarker(enemy.x, enemy.y, 38, 430);
     this.tweens.add({
       targets: warning,
       scaleX: .62,
@@ -3057,7 +3112,9 @@ class GameScene extends Phaser.Scene {
     });
 
     const tell = this.add.graphics().setDepth(21);
-    tell.lineStyle(4, 0xff6a4d, .8);
+    tell.lineStyle(8, HOSTILE_ATTACK_DARK, .76);
+    tell.lineBetween(enemy.x, enemy.y, enemy.x + Math.cos(angle) * 100, enemy.y + Math.sin(angle) * 100);
+    tell.lineStyle(3, HOSTILE_ATTACK_COLOR, .96);
     tell.lineBetween(enemy.x, enemy.y, enemy.x + Math.cos(angle) * 100, enemy.y + Math.sin(angle) * 100);
     this.tweens.add({ targets: tell, alpha: 0, duration: 430, onComplete: () => tell.destroy() });
 
@@ -3099,11 +3156,11 @@ class GameScene extends Phaser.Scene {
     const impactX = targetX - Math.cos(angle) * 18;
     const impactY = targetY - Math.sin(angle) * 18;
     const slash = this.add.graphics().setDepth(36);
-    slash.lineStyle(7, 0xffe29a, 1);
+    slash.lineStyle(9, HOSTILE_ATTACK_DARK, .96);
     slash.beginPath();
     slash.arc(impactX, impactY, 28, angle - .9, angle + .9, false);
     slash.strokePath();
-    slash.lineStyle(3, 0xff5d45, .9);
+    slash.lineStyle(5, HOSTILE_ATTACK_COLOR, 1);
     slash.lineBetween(sourceX, sourceY, targetX, targetY);
     this.tweens.add({
       targets: slash,
@@ -3119,8 +3176,8 @@ class GameScene extends Phaser.Scene {
     if (!projectile?.active || this.state !== 'running') return;
     const { x, y, damage } = projectile;
     projectile.destroy();
-    const impact = this.add.circle(x, y, 13, 0xe7b4ff, .95)
-      .setStrokeStyle(4, 0x9b38cf, 1)
+    const impact = this.add.circle(x, y, 13, HOSTILE_ATTACK_COLOR, .95)
+      .setStrokeStyle(5, HOSTILE_ATTACK_DARK, 1)
       .setDepth(38);
     this.tweens.add({
       targets: impact,
