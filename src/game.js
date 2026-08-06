@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260806-5';
+const SPRITE_VERSION = '20260806-6';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -83,6 +83,7 @@ const CHARACTERS = [
     accent: '#e99ab4',
     attack: '저승 영혼꽃',
     description: '연쇄되는 영혼꽃과 회복력, 넓은 호롱불로 밤을 이겨냅니다.',
+    spriteFacesLeft: true,
     stats: { damage: 15, magic: 26, speed: 165, maxHP: 125, attackDelay: 570, regen: 1.2, lightRadius: 185 }
   },
   {
@@ -1387,6 +1388,9 @@ class GameScene extends Phaser.Scene {
     this.player.body.setCircle(78, 50, 68);
     this.player.setData('baseScaleX', this.player.scaleX);
     this.player.setData('baseScaleY', this.player.scaleY);
+    this.player.setData('spriteFacesLeft', Boolean(character.spriteFacesLeft));
+    this.player.setData('facingDirection', 1);
+    this.player.setFlipX(Boolean(character.spriteFacesLeft));
     this.cameras.main.startFollow(this.player, true, .11, .11);
     this.cameras.main.centerOn(this.player.x, this.player.y);
 
@@ -1474,7 +1478,12 @@ class GameScene extends Phaser.Scene {
       (horizontal / magnitude) * this.stats.speed,
       (vertical / magnitude) * this.stats.speed
     );
-    if (horizontal !== 0) this.player.setFlipX(horizontal < 0);
+    if (horizontal !== 0) {
+      const facingDirection = Math.sign(horizontal);
+      const spriteFacesLeft = this.player.getData('spriteFacesLeft') === true;
+      this.player.setData('facingDirection', facingDirection);
+      this.player.setFlipX(spriteFacesLeft ? facingDirection > 0 : facingDirection < 0);
+    }
 
     const moving = horizontal !== 0 || vertical !== 0;
     const baseScaleX = this.player.getData('baseScaleX');
@@ -1695,8 +1704,9 @@ class GameScene extends Phaser.Scene {
     const lanternVisible = dayMix > .08;
     this.lantern.setVisible(lanternVisible);
     if (lanternVisible) {
-      this.lantern.setPosition(this.player.x + (this.player.flipX ? -22 : 22), this.player.y + 10);
-      this.lantern.setFlipX(this.player.flipX);
+      const facingDirection = this.player.getData('facingDirection') || 1;
+      this.lantern.setPosition(this.player.x + facingDirection * 22, this.player.y + 10);
+      this.lantern.setFlipX(facingDirection < 0);
       this.lantern.setAngle(Math.sin(this.time.now * .01) * 3);
       this.lightGraphics.clear();
       this.lightGraphics.fillStyle(0xffffff, 1);
@@ -3024,6 +3034,10 @@ class GameScene extends Phaser.Scene {
 
   openChest(player, chest) {
     if (!chest?.active || this.state !== 'running') return;
+    if (this.bossExperienceCollectionActive || this.pendingLevels > 0) {
+      if (!this.bossExperienceCollectionActive && this.pendingLevels > 0) this.offerChoices(false);
+      return;
+    }
     this.createChestBurst(chest.x, chest.y);
     chest.destroy();
     this.offerChoices(true);
