@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-7';
+const SPRITE_VERSION = '20260807-8';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -15,6 +15,7 @@ const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
 const CHEST_PICKUP_RADIUS = 72;
+const CHOICE_EXIT_INVULNERABILITY_MS = 500;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
 const HERO_ATTACK_PALETTES = Object.freeze({
@@ -906,6 +907,8 @@ class GameScene extends Phaser.Scene {
     this.nextAreaPulseAt = 0;
     this.nextBossPatternAt = 0;
     this.lastHitAt = -Infinity;
+    this.choiceInvulnerableUntil = -Infinity;
+    this.choiceFreezeActive = false;
     this.lastHudAt = 0;
     this.lastRegenAt = 0;
 
@@ -1318,30 +1321,31 @@ class GameScene extends Phaser.Scene {
 
   buildChapterProps(index, chapter) {
     this.clearChapterProps();
+    // 큰 설화 기물은 배경의 장터·문·석탑·가면·석등과 겹치지 않는 전용 구역에 둔다.
     const layouts = [
       [
-        [300,260,202,false],[2080,280,186,true],[330,1480,190,true],
-        [2040,1460,210,false],[1010,250,158,true],[1450,1540,166,false]
+        [250,650,202,false],[2150,670,186,true],[300,1120,190,true],
+        [2100,980,210,false],[930,260,158,true],[1480,1530,166,false]
       ],
       [
-        [350,330,190,false],[2030,360,184,true],[390,1420,176,true],
-        [1980,1390,202,false],[1060,250,156,false],[1430,1530,164,true]
+        [720,300,190,false],[1620,320,184,true],[260,900,176,true],
+        [2140,930,202,false],[900,1500,156,false],[1500,1550,164,true]
       ],
       [
-        [310,300,228,false],[2070,300,218,true],[330,1470,210,true],
-        [2050,1460,232,false],[850,250,176,true],[1560,1520,180,false]
+        [300,840,228,false],[2100,850,218,true],[750,560,210,true],
+        [1650,560,232,false],[760,1240,176,true],[1650,1240,180,false]
       ],
       [
-        [330,320,192,false],[2040,350,184,true],[360,1450,202,true],
-        [2020,1430,194,false],[980,250,158,true],[1500,1530,170,false]
+        [700,600,192,false],[1700,610,184,true],[280,900,202,true],
+        [2120,900,194,false],[800,1190,158,true],[1580,1180,170,false]
       ],
       [
-        [330,300,214,false],[2050,310,204,true],[350,1460,196,true],
-        [2020,1450,220,false],[920,250,166,true],[1550,1530,174,false]
+        [760,520,214,false],[1640,520,204,true],[280,900,196,true],
+        [2120,900,220,false],[820,1180,166,true],[1580,1180,174,false]
       ],
       [
-        [310,320,204,false],[2070,340,194,true],[350,1440,190,true],
-        [2030,1420,214,false],[900,260,162,true],[1540,1510,178,false]
+        [740,260,204,false],[1640,260,194,true],[850,850,190,true],
+        [1550,850,214,false],[800,1530,162,true],[1570,1530,178,false]
       ]
     ];
     const propKey = CHAPTER_PROP_KEYS[index] || CHAPTER_PROP_KEYS[0];
@@ -1614,6 +1618,8 @@ class GameScene extends Phaser.Scene {
     this.treasureRewardKeys = new Set();
     this.lastTreasureSpawnAt = -Infinity;
     this.lastTreasurePosition = null;
+    this.choiceInvulnerableUntil = -Infinity;
+    this.choiceFreezeActive = false;
     this.activeBoss = null;
     this.attackSequence = 0;
     this.nextSpawnAt = this.time.now + 1200;
@@ -3435,10 +3441,27 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  freezeCombatForChoice() {
+    if (this.choiceFreezeActive) return;
+    this.choiceFreezeActive = true;
+    this.physics.pause();
+    this.tweens.pauseAll();
+    this.time.paused = true;
+    this.player?.setVelocity(0, 0);
+  }
+
+  resumeCombatAfterChoice() {
+    if (!this.choiceFreezeActive) return;
+    this.choiceInvulnerableUntil = performance.now() + CHOICE_EXIT_INVULNERABILITY_MS;
+    this.time.paused = false;
+    this.tweens.resumeAll();
+    this.physics.resume();
+    this.choiceFreezeActive = false;
+  }
+
   offerChoices(treasure) {
     this.state = 'choosing';
-    this.physics.pause();
-    this.player.setVelocity(0, 0);
+    this.freezeCombatForChoice();
     if (treasure) audio.chest();
     else audio.level();
 
@@ -3464,14 +3487,16 @@ class GameScene extends Phaser.Scene {
         ui.choice.classList.add('hidden');
         if (!treasure) this.pendingLevels = Math.max(0, this.pendingLevels - 1);
         if (this.pendingLevels > 0) {
-          this.time.delayedCall(80, () => this.offerChoices(false));
+          window.setTimeout(() => {
+            if (this.state === 'choosing') this.offerChoices(false);
+          }, 80);
           return;
         }
         this.state = 'running';
-        this.physics.resume();
         this.updateHud();
         showToast(`${skill.title} 획득!`);
-        this.processPendingChoiceQueue();
+        if (this.processPendingChoiceQueue()) return;
+        this.resumeCombatAfterChoice();
       }, { once: true });
       ui.choiceGrid.appendChild(button);
     });
@@ -3606,6 +3631,7 @@ class GameScene extends Phaser.Scene {
   }
 
   takePlayerDamage(rawDamage, sourceX, sourceY) {
+    if (this.state !== 'running' || performance.now() < this.choiceInvulnerableUntil) return;
     if (this.time.now - this.lastHitAt < 900) return;
     this.lastHitAt = this.time.now;
     const damage = Math.max(1, rawDamage * (1 - (this.mapGuard || 0)) - this.stats.armor);
