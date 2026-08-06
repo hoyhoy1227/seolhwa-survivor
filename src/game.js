@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-9';
+const SPRITE_VERSION = '20260807-10';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -14,7 +14,8 @@ const FINAL_BOSS_SUMMON_LIMIT = 2;
 const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
-const CHEST_PICKUP_RADIUS = 96;
+const CHEST_PICKUP_RADIUS = 108;
+const CHEST_PICKUP_SWEEP_LIMIT = 320;
 const CHOICE_EXIT_INVULNERABILITY_MS = 500;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
@@ -1639,6 +1640,7 @@ class GameScene extends Phaser.Scene {
     this.player.setData('spriteFacesLeft', Boolean(character.spriteFacesLeft));
     this.player.setData('facingDirection', 1);
     this.player.setFlipX(Boolean(character.spriteFacesLeft));
+    this.lastChestCheckPosition = { x: this.player.x, y: this.player.y };
     this.cameras.main.startFollow(this.player, true, .11, .11);
     this.cameras.main.centerOn(this.player.x, this.player.y);
 
@@ -3223,6 +3225,7 @@ class GameScene extends Phaser.Scene {
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
     const touchedChest = this.findTouchedChest();
+    this.rememberChestCheckPosition();
     if (touchedChest) {
       this.openChest(player, touchedChest);
       if (this.state !== 'running') return;
@@ -3256,6 +3259,7 @@ class GameScene extends Phaser.Scene {
     this.hazardZones.forEach(zone => zone.rune?.destroy());
     this.hazardZones = [];
     this.player.setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setVelocity(0, 0);
+    this.rememberChestCheckPosition();
     this.cameras.main.flash(620, 190, 220, 255, false);
     this.applyChapterTheme(this.chapterIndex);
     this.updateChapterHud();
@@ -3383,6 +3387,28 @@ class GameScene extends Phaser.Scene {
     showToast(`보물상자가 나타났습니다! 지도에서 ${location}을 확인하세요.`, 3200);
   }
 
+  distanceToPlayerPickupPath(x, y) {
+    const endX = this.player.x;
+    const endY = this.player.y;
+    const startX = this.lastChestCheckPosition?.x ?? endX;
+    const startY = this.lastChestCheckPosition?.y ?? endY;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const travelSquared = dx * dx + dy * dy;
+    if (travelSquared <= 0 || travelSquared > CHEST_PICKUP_SWEEP_LIMIT * CHEST_PICKUP_SWEEP_LIMIT) {
+      return Phaser.Math.Distance.Between(endX, endY, x, y);
+    }
+    const progress = Phaser.Math.Clamp(((x - startX) * dx + (y - startY) * dy) / travelSquared, 0, 1);
+    const nearestX = startX + dx * progress;
+    const nearestY = startY + dy * progress;
+    return Phaser.Math.Distance.Between(nearestX, nearestY, x, y);
+  }
+
+  rememberChestCheckPosition() {
+    if (!this.player?.active) return;
+    this.lastChestCheckPosition = { x: this.player.x, y: this.player.y };
+  }
+
   findTouchedChest() {
     if (!this.player?.active) return null;
     return this.chests.getChildren().find(chest => {
@@ -3392,13 +3418,14 @@ class GameScene extends Phaser.Scene {
         + Math.max(chest.displayWidth, chest.displayHeight)
       ) * .55;
       const pickupRadius = Math.max(CHEST_PICKUP_RADIUS, visualRadius);
-      return Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y) <= pickupRadius;
+      return this.distanceToPlayerPickupPath(chest.x, chest.y) <= pickupRadius;
     }) || null;
   }
 
   updateChestPickups() {
     if (this.state !== 'running') return;
     const touchedChest = this.findTouchedChest();
+    this.rememberChestCheckPosition();
     if (touchedChest) this.openChest(this.player, touchedChest);
   }
 
