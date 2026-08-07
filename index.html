@@ -712,6 +712,20 @@
     #pause-screen { background: rgba(1,2,7,.78); }
     #pause-screen .modal-panel { width: min(460px, 92vw); }
 
+    #portal-confirm-screen { background: rgba(4, 5, 13, .84); }
+    #portal-confirm-screen .modal-panel {
+      width: min(540px, 92vw);
+      border-color: rgba(135, 181, 255, .58);
+      box-shadow: 0 28px 100px #000, inset 0 0 65px rgba(102, 117, 235, .08);
+    }
+
+    #portal-confirm-screen .section-copy {
+      margin: 14px auto 0;
+      max-width: 430px;
+      color: #dbe8ff;
+      line-height: 1.75;
+    }
+
     .how-panel {
       width: min(760px, 94vw);
       max-height: 92vh;
@@ -863,7 +877,7 @@
         <div class="control-card"><b>이동</b><span>방향키 또는 WASD를 사용합니다. 화면을 누르고 있어도 해당 방향으로 움직입니다.</span></div>
         <div class="control-card"><b>공격 식별</b><span>일곱 수호자는 형태와 고유색이 모두 다른 자동 공격을 사용합니다. 검붉은 외곽선·조준선·위험 표식은 몬스터의 공격입니다.</span></div>
         <div class="control-card"><b>성장</b><span>경험치 근처로 이동해 정기를 끌어옵니다. 정기 복주머니를 얻으면 획득 범위가 크게 넓어집니다.</span></div>
-        <div class="control-card"><b>보스와 포탈</b><span>보스를 처치하면 남은 적들이 파란 경험치로 변하고, 전장의 모든 경험치가 캐릭터에게 날아옵니다. 모두 도착하면 포탈이 열립니다.</span></div>
+        <div class="control-card"><b>보스와 포탈</b><span>보스를 처치하면 남은 적들이 파란 경험치로 변해 캐릭터에게 날아오고 포탈이 나타납니다. 포탈에 들어가면 다음 설화로 이동할지 선택할 수 있습니다.</span></div>
       </div>
       <div class="menu-actions">
         <button id="how-back" class="game-button">확인</button>
@@ -915,6 +929,18 @@
     </div>
   </section>
 
+  <section id="portal-confirm-screen" class="screen hidden" aria-labelledby="portal-confirm-heading">
+    <div class="modal-panel">
+      <p class="eyebrow">FOLKLORE GATE</p>
+      <h2 id="portal-confirm-heading" class="section-heading">다음 설화로 넘어갈까요?</h2>
+      <p id="portal-confirm-copy" class="section-copy">현재 설화를 떠나기 전에 선택하세요.</p>
+      <div class="menu-actions" style="margin-top:24px">
+        <button id="portal-go-button" class="game-button">다음 설화로 이동</button>
+        <button id="portal-stay-button" class="game-button secondary">아직 이 설화에 머무르기</button>
+      </div>
+    </div>
+  </section>
+
   <section id="pause-screen" class="screen hidden">
     <div class="modal-panel">
       <p class="eyebrow">PAUSED</p>
@@ -929,6 +955,6 @@
 
   <script src="./src/sprite-data.js?v=20260807-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260807-11"></script>
+  <script src="./src/game.js?v=20260807-12"></script>
 </body>
 </html>

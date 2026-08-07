@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-11';
+const SPRITE_VERSION = '20260807-12';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -14,9 +14,11 @@ const FINAL_BOSS_SUMMON_LIMIT = 2;
 const FIRST_CHAPTER_SPAWN_INTERVAL_SCALE = 1.5;
 const RAPID_TREASURE_WINDOW_MS = 100;
 const TREASURE_MIN_SEPARATION = 180;
-const CHEST_PICKUP_RADIUS = 108;
+const CHEST_PICKUP_RADIUS = 96;
 const CHEST_PICKUP_SWEEP_LIMIT = 320;
 const CHOICE_EXIT_INVULNERABILITY_MS = 500;
+const LEVEL_MAX_HP_GROWTH = .05;
+const LATE_CHAPTER_NORMAL_DAMAGE_SCALE = .97;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
 const HERO_ATTACK_PALETTES = Object.freeze({
@@ -613,6 +615,11 @@ const ui = {
   choiceTitle: document.getElementById('choice-title'),
   choiceCopy: document.getElementById('choice-copy'),
   choiceGrid: document.getElementById('choice-grid'),
+  portalConfirm: document.getElementById('portal-confirm-screen'),
+  portalConfirmHeading: document.getElementById('portal-confirm-heading'),
+  portalConfirmCopy: document.getElementById('portal-confirm-copy'),
+  portalGo: document.getElementById('portal-go-button'),
+  portalStay: document.getElementById('portal-stay-button'),
   pause: document.getElementById('pause-screen'),
   pauseKicker: document.querySelector('#pause-screen .eyebrow'),
   pauseHeading: document.querySelector('#pause-screen .section-heading'),
@@ -636,6 +643,7 @@ function hideScreens() {
   ui.characters.classList.add('hidden');
   ui.story.classList.add('hidden');
   ui.choice.classList.add('hidden');
+  ui.portalConfirm.classList.add('hidden');
   ui.pause.classList.add('hidden');
 }
 
@@ -835,6 +843,16 @@ ui.storyContinue.addEventListener('click', () => {
   currentScene()?.resumeChapterBriefing();
 });
 
+ui.portalGo.addEventListener('click', () => {
+  audio.click();
+  currentScene()?.confirmPortalTransition();
+});
+
+ui.portalStay.addEventListener('click', () => {
+  audio.click();
+  currentScene()?.cancelPortalTransition();
+});
+
 document.getElementById('pause-button').addEventListener('click', () => currentScene()?.togglePause());
 document.getElementById('resume-button').addEventListener('click', () => currentScene()?.togglePause(false));
 document.getElementById('restart-button').addEventListener('click', () => {
@@ -901,6 +919,7 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
+    this.pendingLevelChoices = [];
     this.pendingTreasureChoices = 0;
     this.nextAttackAt = 0;
     this.nextSpawnAt = 0;
@@ -910,6 +929,8 @@ class GameScene extends Phaser.Scene {
     this.lastHitAt = -Infinity;
     this.choiceInvulnerableUntil = -Infinity;
     this.choiceFreezeActive = false;
+    this.pendingPortal = null;
+    this.portalConfirmCooldownUntil = 0;
     this.lastHudAt = 0;
     this.lastRegenAt = 0;
 
@@ -1609,6 +1630,7 @@ class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.kills = 0;
     this.pendingLevels = 0;
+    this.pendingLevelChoices = [];
     this.pendingTreasureChoices = 0;
     this.chapterIndex = 0;
     this.chapterKills = 0;
@@ -1625,6 +1647,8 @@ class GameScene extends Phaser.Scene {
     this.lastTreasurePosition = null;
     this.choiceInvulnerableUntil = -Infinity;
     this.choiceFreezeActive = false;
+    this.pendingPortal = null;
+    this.portalConfirmCooldownUntil = 0;
     this.activeBoss = null;
     this.attackSequence = 0;
     this.nextSpawnAt = this.time.now + 1200;
@@ -2162,10 +2186,13 @@ class GameScene extends Phaser.Scene {
     enemy.setData('folkName', chapter.enemyNames[typeIndex]);
     const laterEnemyHpScale = this.chapterIndex === 0 ? 1 : 1.5 + this.chapterIndex * .25;
     const laterEnemyDamageScale = this.chapterIndex === 0 ? 1 : 1.3 + this.chapterIndex * .2;
+    const normalEnemyDamageScale = this.chapterIndex >= 2 && !options.preserveBossDamage
+      ? LATE_CHAPTER_NORMAL_DAMAGE_SCALE
+      : 1;
     enemy.hp = (18 + this.level * 4 + stageProgress * 18 + this.chapterIndex * 7) * chapter.hpScale * laterEnemyHpScale * (elite ? 3 : 1);
     enemy.maxHp = enemy.hp;
     enemy.speed = ((ranged ? 29 : 36) + stageProgress * (ranged ? 16 : 28) + (elite ? 4 : 0)) * chapter.speedScale;
-    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale * laterEnemyDamageScale * ENEMY_DAMAGE_SCALE;
+    enemy.damage = ((ranged ? 5 : 6) + Math.floor(this.chapterIndex * 1.5) + stageProgress * 3 + (elite ? 4 : 0)) * chapter.damageScale * laterEnemyDamageScale * ENEMY_DAMAGE_SCALE * normalEnemyDamageScale;
     enemy.xpValue = elite ? 8 : ranged ? 4 : 3;
     enemy.elite = elite;
     enemy.kind = ranged ? 'ranged' : 'melee';
@@ -2179,7 +2206,7 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnMidBoss(order) {
-    const enemy = this.spawnEnemy(true);
+    const enemy = this.spawnEnemy(true, { preserveBossDamage: true });
     if (!enemy?.active) return;
     const chapter = CAMPAIGN[this.chapterIndex] || CAMPAIGN[0];
     const sizeScale = 1.24;
@@ -2366,6 +2393,7 @@ class GameScene extends Phaser.Scene {
       }
       const guardian = this.spawnEnemy(true, {
         ignoreReinforcementLimit: true,
+        preserveBossDamage: true,
         x: summonX,
         y: summonY
       });
@@ -3208,7 +3236,7 @@ class GameScene extends Phaser.Scene {
   updatePortalGuide() {
     this.portals?.getChildren().filter(portal => portal.active).forEach(portal => {
       const label = portal.getData('guideLabel');
-      if (label?.active) label.setText('다음 설화로 이동\n포탈 안으로 들어가세요');
+      if (label?.active) label.setText('이동 여부 선택\n포탈 안으로 들어가세요');
       const arrow = portal.getData('guideArrow');
       if (arrow?.active) arrow.setFillStyle(0xffef9b, .95);
     });
@@ -3226,12 +3254,81 @@ class GameScene extends Phaser.Scene {
 
   enterPortal(player, portal) {
     if (!portal?.active || this.state !== 'running' || !this.bossDefeated) return;
+    if (this.time.now < this.portalConfirmCooldownUntil || portal.getData('confirming')) return;
     const touchedChest = this.findTouchedChest();
     this.rememberChestCheckPosition();
     if (touchedChest) {
-      this.openChest(player, touchedChest);
-      if (this.state !== 'running') return;
+      if (this.openChest(player, touchedChest)) this.portalConfirmCooldownUntil = this.time.now + 240;
+      return;
     }
+    this.showPortalConfirmation(portal);
+  }
+
+  showPortalConfirmation(portal) {
+    if (!portal?.active || this.state !== 'running') return;
+    const finalChapter = this.chapterIndex >= CAMPAIGN.length - 1;
+    const nextChapter = CAMPAIGN[this.chapterIndex + 1];
+    this.pendingPortal = portal;
+    portal.setData('confirming', true);
+    this.state = 'portal-confirm';
+    this.physics.pause();
+    this.player.setVelocity(0, 0);
+    ui.portalConfirmHeading.textContent = finalChapter
+      ? '여섯 설화를 모두 완성할까요?'
+      : `${nextChapter.name}로 넘어갈까요?`;
+    ui.portalConfirmCopy.textContent = finalChapter
+      ? '마지막 포탈을 통과하면 이번 모험을 완성합니다. 아직 남아 있으려면 돌아가기를 선택하세요.'
+      : `${CAMPAIGN[this.chapterIndex].name}을 떠나 ${nextChapter.name}로 이동합니다. 아직 보물이나 경험치를 확인하려면 현재 설화에 머무르세요.`;
+    ui.portalGo.textContent = finalChapter ? '설화 완성하기' : '다음 설화로 이동';
+    ui.portalConfirm.classList.remove('hidden');
+  }
+
+  confirmPortalTransition() {
+    if (this.state !== 'portal-confirm') return;
+    const portal = this.pendingPortal;
+    ui.portalConfirm.classList.add('hidden');
+    this.pendingPortal = null;
+    if (!portal?.active) {
+      this.state = 'running';
+      this.physics.resume();
+      return;
+    }
+    portal.setData('confirming', false);
+    this.state = 'running';
+    this.travelThroughPortal(portal);
+  }
+
+  cancelPortalTransition() {
+    if (this.state !== 'portal-confirm') return;
+    const portal = this.pendingPortal;
+    ui.portalConfirm.classList.add('hidden');
+    this.pendingPortal = null;
+    portal?.setData('confirming', false);
+    this.portalConfirmCooldownUntil = this.time.now + 1100;
+    this.state = 'running';
+    this.physics.resume();
+    if (portal?.active && this.player?.active) {
+      let dx = this.player.x - portal.x;
+      let dy = this.player.y - portal.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < 1) {
+        dx = -1;
+        dy = 0;
+      } else {
+        dx /= distance;
+        dy /= distance;
+      }
+      this.player.setPosition(
+        Phaser.Math.Clamp(portal.x + dx * 118, 45, WORLD_WIDTH - 45),
+        Phaser.Math.Clamp(portal.y + dy * 118, 45, WORLD_HEIGHT - 45)
+      ).setVelocity(0, 0);
+      this.rememberChestCheckPosition();
+    }
+    showToast('현재 설화에 머무릅니다. 포탈에 다시 들어가면 이동 여부를 선택할 수 있습니다.', 2600);
+  }
+
+  travelThroughPortal(portal) {
+    if (!portal?.active || !this.bossDefeated) return;
     const carryBossExperience = this.bossExperienceCollectionActive;
     this.destroyPortalGuide(portal);
     portal.destroy();
@@ -3248,6 +3345,7 @@ class GameScene extends Phaser.Scene {
     this.bossSpawned = false;
     this.bossDefeated = false;
     this.bossSpawnElapsed = null;
+    this.portalConfirmCooldownUntil = 0;
     this.lastTreasureSpawnAt = -Infinity;
     this.lastTreasurePosition = null;
     this.midBossesSpawned = 0;
@@ -3322,8 +3420,13 @@ class GameScene extends Phaser.Scene {
     while (this.xp >= this.xpNeeded) {
       this.xp -= this.xpNeeded;
       this.level += 1;
+      const previousMaxHP = this.stats.maxHP;
+      this.stats.maxHP *= 1 + LEVEL_MAX_HP_GROWTH;
+      const maxHPGain = this.stats.maxHP - previousMaxHP;
+      this.stats.hp = Math.min(this.stats.maxHP, this.stats.hp + maxHPGain);
       this.xpNeeded = experienceRequired(this.level);
       this.pendingLevels += 1;
+      this.pendingLevelChoices.push({ level: this.level, maxHPGain });
     }
     this.updateHud();
     this.processPendingChoiceQueue();
@@ -3525,9 +3628,13 @@ class GameScene extends Phaser.Scene {
 
     const pool = SKILLS.filter(skill => treasure ? skill.rare : !skill.rare);
     const shuffled = Phaser.Utils.Array.Shuffle([...pool]).slice(0, 3);
-    ui.choiceKicker.textContent = treasure ? 'TREASURE FOUND' : `LEVEL ${this.level}`;
+    const pendingLevelChoice = treasure ? null : this.pendingLevelChoices[0];
+    const displayedLevel = pendingLevelChoice?.level ?? Math.max(1, this.level - this.pendingLevels + 1);
+    ui.choiceKicker.textContent = treasure ? 'TREASURE FOUND' : `LEVEL ${displayedLevel}`;
     ui.choiceTitle.textContent = treasure ? '보물의 힘을 선택하세요' : '새로운 힘을 선택하세요';
-    ui.choiceCopy.textContent = treasure ? '상자에서 희귀한 설화의 힘이 깨어났습니다.' : '하나를 선택하면 전투가 계속됩니다.';
+    ui.choiceCopy.textContent = treasure
+      ? '상자에서 희귀한 설화의 힘이 깨어났습니다.'
+      : `최대 체력이 ${Math.max(1, Math.round(pendingLevelChoice?.maxHPGain || 0))} 증가하고 같은 만큼 회복되었습니다. 하나를 선택하세요.`;
     ui.choiceGrid.innerHTML = '';
 
     shuffled.forEach(skill => {
@@ -3543,7 +3650,10 @@ class GameScene extends Phaser.Scene {
         audio.click();
         skill.apply(this);
         ui.choice.classList.add('hidden');
-        if (!treasure) this.pendingLevels = Math.max(0, this.pendingLevels - 1);
+        if (!treasure) {
+          this.pendingLevels = Math.max(0, this.pendingLevels - 1);
+          this.pendingLevelChoices.shift();
+        }
         if (this.pendingLevels > 0) {
           window.setTimeout(() => {
             if (this.state === 'choosing') this.offerChoices(false);
@@ -3911,7 +4021,7 @@ class GameScene extends Phaser.Scene {
   }
 
   togglePause(forcePause) {
-    if (!this.player?.active || ['choosing', 'gameover', 'transition', 'victory'].includes(this.state)) return;
+    if (!this.player?.active || ['choosing', 'portal-confirm', 'gameover', 'transition', 'victory'].includes(this.state)) return;
     const shouldPause = forcePause ?? this.state === 'running';
     if (shouldPause && this.state === 'running') {
       this.state = 'paused';
