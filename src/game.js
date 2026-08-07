@@ -2,7 +2,7 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260807-12';
+const SPRITE_VERSION = '20260808-1';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -35,6 +35,17 @@ const HOSTILE_ATTACK_DARK = 0x26050c;
 const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(/\/$/, '');
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
+const BACKGROUND_BASE = new URL('./assets/backgrounds/', document.baseURI).href.replace(/\/$/, '');
+const CHAPTER_BACKGROUND_FILES = Object.freeze([
+  'chapter-01-dokkaebi-market-v1.png',
+  'chapter-02-fox-pass-v1.png',
+  'chapter-03-golden-gate-v1.png',
+  'chapter-04-tiger-peak-v1.png',
+  'chapter-05-moon-palace-v1.png',
+  'chapter-06-underworld-road-v1.png'
+]);
+const chapterBackgroundKey = index => `chapter-background-${index}`;
+const chapterBackgroundUrl = fileName => `${BACKGROUND_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 
 const experienceRequired = level => Math.round(11 + level * 6 + level * level * .65);
 
@@ -591,6 +602,7 @@ const ui = {
   storyBack: document.getElementById('story-back'),
   storyContinue: document.getElementById('story-continue'),
   hud: document.getElementById('hud'),
+  hudPortrait: document.getElementById('hud-portrait'),
   heroName: document.getElementById('hero-name'),
   hpFill: document.getElementById('hp-fill'),
   hpText: document.getElementById('hp-text'),
@@ -896,6 +908,10 @@ class GameScene extends Phaser.Scene {
       if (decodedImage) this.textures.addImage(key, decodedImage);
       else this.load.image(key, remoteSpriteUrl(fileName));
     });
+    CHAPTER_BACKGROUND_FILES.forEach((fileName, index) => {
+      const key = chapterBackgroundKey(index);
+      if (!this.textures.exists(key)) this.load.image(key, chapterBackgroundUrl(fileName));
+    });
   }
 
   create() {
@@ -971,7 +987,8 @@ class GameScene extends Phaser.Scene {
       'device-moon-drum',
       'device-soul-well',
       ...CHAPTER_PROP_KEYS,
-      'ground-forest'
+      'ground-forest',
+      ...CHAPTER_BACKGROUND_FILES.map((fileName, index) => chapterBackgroundKey(index))
     ];
     this.missingSpriteKeys = required.filter(key => !this.textures.exists(key));
     if (this.missingSpriteKeys.length) {
@@ -987,6 +1004,8 @@ class GameScene extends Phaser.Scene {
     this.groundBase = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x263b2e)
       .setOrigin(0)
       .setDepth(-32);
+    this.chapterBackground = this.add.image(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, chapterBackgroundKey(0))
+      .setDepth(-31);
     this.ground = this.add.tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 'ground-forest')
       .setOrigin(0)
       .setDepth(-30);
@@ -1033,7 +1052,12 @@ class GameScene extends Phaser.Scene {
   applyChapterTheme(index) {
     const chapter = CAMPAIGN[index] || CAMPAIGN[0];
     this.groundBase.setFillStyle(chapter.ground, 1);
-    const groundTextureAlphas = [.64, .34, .24, .46, .3, .2];
+    const backgroundKey = chapterBackgroundKey(index);
+    this.chapterBackground.setTexture(backgroundKey).setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setAlpha(1);
+    const backgroundSource = this.textures.get(backgroundKey).getSourceImage();
+    const backgroundScale = Math.max(WORLD_WIDTH / backgroundSource.width, WORLD_HEIGHT / backgroundSource.height);
+    this.chapterBackground.setDisplaySize(backgroundSource.width * backgroundScale, backgroundSource.height * backgroundScale);
+    const groundTextureAlphas = [.08, .06, .055, .07, .055, .05];
     this.ground.setTint(chapter.ground).setAlpha(groundTextureAlphas[index]);
     const tileScales = [1.08, .78, 1.28, .7, 1.04, .88];
     this.ground.tileScaleX = tileScales[index];
@@ -1041,6 +1065,8 @@ class GameScene extends Phaser.Scene {
     this.ground.tilePositionX = index * 137;
     this.ground.tilePositionY = index * 89;
     this.drawChapterTerrain(index, chapter);
+    this.terrain.setAlpha(.1);
+    this.pathDetails.setAlpha(.12);
 
     this.landmarks.clear();
     const landmarkLayouts = [
@@ -1080,8 +1106,10 @@ class GameScene extends Phaser.Scene {
       }
       if (marker % 2 === 0) this.landmarks.fillStyle(chapter.accent, .55).fillCircle(x, y, 4);
     });
+    this.landmarks.setAlpha(.14);
     this.drawChapterScenery(index, chapter);
-    this.buildChapterProps(index, chapter);
+    this.scenery.setAlpha(.11);
+    this.clearChapterProps();
     this.buildMapDevices(index, chapter);
   }
 
@@ -1685,6 +1713,8 @@ class GameScene extends Phaser.Scene {
 
     hideScreens();
     ui.hud.classList.remove('hidden');
+    ui.hudPortrait.src = spriteUrl(`${character.id}.png`);
+    ui.hudPortrait.alt = `${character.name} 초상화`;
     ui.heroName.textContent = `${character.name} · ${character.role}`;
     ui.bossPanel.classList.add('hidden');
     this.applyChapterTheme(this.chapterIndex);
@@ -3236,7 +3266,7 @@ class GameScene extends Phaser.Scene {
   updatePortalGuide() {
     this.portals?.getChildren().filter(portal => portal.active).forEach(portal => {
       const label = portal.getData('guideLabel');
-      if (label?.active) label.setText('이동 여부 선택\n포탈 안으로 들어가세요');
+      if (label?.active) label.setText('다음 설화로 이동\n포탈 안으로 들어가세요');
       const arrow = portal.getData('guideArrow');
       if (arrow?.active) arrow.setFillStyle(0xffef9b, .95);
     });

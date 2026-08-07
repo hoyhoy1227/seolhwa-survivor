@@ -46,6 +46,12 @@ jobs:
           test -s _site/assets/sprites/prop-mountain-shrine-v1.png
           test -s _site/assets/sprites/prop-moon-court-v1.png
           test -s _site/assets/sprites/prop-underworld-memorial-v1.png
+          test -s _site/assets/backgrounds/chapter-01-dokkaebi-market-v1.png
+          test -s _site/assets/backgrounds/chapter-02-fox-pass-v1.png
+          test -s _site/assets/backgrounds/chapter-03-golden-gate-v1.png
+          test -s _site/assets/backgrounds/chapter-04-tiger-peak-v1.png
+          test -s _site/assets/backgrounds/chapter-05-moon-palace-v1.png
+          test -s _site/assets/backgrounds/chapter-06-underworld-road-v1.png
           find _site -type f -maxdepth 4 -print
 
       - name: Upload static site

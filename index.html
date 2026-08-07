@@ -761,7 +761,240 @@
       line-height: 1.65;
     }
 
+    /* 조선 목조건축과 창호 문양을 본뜬 공통 UI */
+    .title-panel,
+    .selection-panel,
+    .modal-panel,
+    .story-panel {
+      position: relative;
+      border: 2px solid #9b6a32;
+      background:
+        linear-gradient(90deg, transparent 0 48%, rgba(222,188,112,.025) 49% 51%, transparent 52%) 0 0 / 32px 32px,
+        linear-gradient(0deg, transparent 0 48%, rgba(222,188,112,.025) 49% 51%, transparent 52%) 0 0 / 32px 32px,
+        radial-gradient(circle at 50% 8%, rgba(44,101,88,.2), transparent 34%),
+        linear-gradient(145deg, rgba(48,27,19,.98), rgba(8,12,15,.98) 58%, rgba(14,26,24,.98));
+      box-shadow:
+        0 30px 100px #000,
+        inset 0 0 0 4px rgba(27,14,10,.92),
+        inset 0 0 0 6px rgba(190,132,57,.3),
+        inset 0 0 80px rgba(0,0,0,.55);
+    }
+
+    .title-panel::before,
+    .selection-panel::before,
+    .modal-panel::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      top: 0;
+      right: 14px;
+      left: 14px;
+      height: 15px;
+      border-bottom: 2px solid #b07a38;
+      background:
+        repeating-linear-gradient(135deg, #151b1c 0 11px, #394244 12px 15px, #101516 16px 25px);
+      clip-path: polygon(2% 0, 98% 0, 100% 45%, 98% 100%, 2% 100%, 0 45%);
+      box-shadow: 0 5px 0 #351f16, 0 8px 12px rgba(0,0,0,.6);
+      pointer-events: none;
+    }
+
+    .title-panel > *,
+    .selection-panel > *,
+    .modal-panel > * { position: relative; z-index: 1; }
+
+    .title-panel {
+      width: min(920px, 94vw);
+      padding: clamp(30px, 5vh, 50px) clamp(24px, 4vw, 44px) clamp(24px, 4vh, 38px);
+    }
+
+    .title-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 250px;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .title-content { min-width: 0; }
+    .title-content .small-note { max-width: 520px; margin-right: auto; margin-left: auto; }
+
+    .title-mascot {
+      position: relative;
+      display: grid;
+      min-height: 360px;
+      place-items: end center;
+      padding: 18px 12px 26px;
+      border: 1px solid rgba(212,161,77,.4);
+      background:
+        radial-gradient(circle at 50% 32%, rgba(255,226,162,.2), transparent 31%),
+        linear-gradient(180deg, rgba(40,82,78,.2), rgba(9,11,16,.2));
+      box-shadow: inset 0 0 36px rgba(0,0,0,.5);
+      overflow: hidden;
+    }
+
+    .title-mascot::before,
+    .title-mascot::after {
+      content: "";
+      position: absolute;
+      top: 16px;
+      bottom: 16px;
+      width: 11px;
+      border: 1px solid rgba(210,158,72,.34);
+      background: repeating-linear-gradient(0deg, rgba(180,121,48,.42) 0 3px, transparent 3px 12px);
+    }
+
+    .title-mascot::before { left: 12px; }
+    .title-mascot::after { right: 12px; }
+
+    .title-mascot img {
+      position: relative;
+      z-index: 2;
+      width: 235px;
+      height: 235px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 18px 12px rgba(0,0,0,.72)) drop-shadow(0 0 18px rgba(255,104,149,.24));
+    }
+
+    .title-mascot strong,
+    .title-mascot em {
+      position: relative;
+      z-index: 3;
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .title-mascot strong { margin-top: -22px; color: #f1d697; font-size: 12px; letter-spacing: .18em; }
+    .title-mascot em { margin-top: 5px; color: #ff9dbf; font-family: "Batang", serif; font-size: 22px; font-style: normal; font-weight: 900; }
+
+    .mascot-moon {
+      position: absolute;
+      top: 36px;
+      left: 50%;
+      width: 132px;
+      height: 132px;
+      border: 1px solid rgba(255,229,168,.58);
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #fff5c9, #e5bd72 58%, rgba(134,78,77,.35) 59%, transparent 72%);
+      box-shadow: 0 0 40px rgba(255,205,120,.28);
+      transform: translateX(-50%);
+    }
+
+    .game-button {
+      position: relative;
+      border: 2px solid #9b672e;
+      border-radius: 1px;
+      background:
+        linear-gradient(90deg, transparent 0 47%, rgba(236,203,133,.08) 48% 52%, transparent 53%) 0 0 / 28px 100%,
+        linear-gradient(180deg, #643829, #301b18 55%, #171417);
+      box-shadow: inset 0 0 0 3px rgba(20,12,10,.7), inset 0 1px rgba(255,255,255,.11), 0 7px 20px rgba(0,0,0,.42);
+    }
+
+    .game-button.secondary {
+      background:
+        linear-gradient(90deg, transparent 0 47%, rgba(206,177,116,.055) 48% 52%, transparent 53%) 0 0 / 28px 100%,
+        linear-gradient(180deg, #263731, #111b1b 58%, #0a1014);
+    }
+
+    .character-card,
+    .choice-card,
+    .control-card,
+    .story-detail-card {
+      border-color: rgba(181,124,53,.45);
+      background:
+        linear-gradient(90deg, transparent 48%, rgba(214,180,105,.03) 49% 51%, transparent 52%) 0 0 / 25px 25px,
+        linear-gradient(180deg, rgba(50,61,51,.42), rgba(10,13,16,.82));
+      box-shadow: inset 0 0 0 2px rgba(18,11,8,.44);
+    }
+
+    .hud-card,
+    .time-card,
+    #chapter-panel,
+    #boss-panel,
+    #minimap-panel {
+      border: 2px solid rgba(174,119,49,.82);
+      border-radius: 2px;
+      background:
+        linear-gradient(90deg, transparent 47%, rgba(230,196,123,.035) 48% 52%, transparent 53%) 0 0 / 24px 24px,
+        linear-gradient(0deg, transparent 47%, rgba(230,196,123,.025) 48% 52%, transparent 53%) 0 0 / 24px 24px,
+        rgba(8,13,15,.93);
+      box-shadow: 0 8px 28px rgba(0,0,0,.66), inset 0 0 0 3px rgba(50,27,16,.7), inset 0 0 28px rgba(20,64,56,.14);
+    }
+
+    .hud-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-width: min(410px, 65vw);
+      padding: 12px 14px 10px 10px;
+    }
+
+    .hud-card::before,
+    .time-card::before,
+    #minimap-panel::before {
+      content: "";
+      position: absolute;
+      top: -7px;
+      right: 5px;
+      left: 5px;
+      height: 8px;
+      border-bottom: 1px solid #a67135;
+      background: repeating-linear-gradient(135deg, #13191b 0 9px, #374044 10px 12px, #101416 13px 20px);
+      clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
+    }
+
+    .time-card { position: relative; }
+
+    .hud-portrait-frame {
+      position: relative;
+      display: grid;
+      width: 72px;
+      height: 72px;
+      overflow: hidden;
+      place-items: center;
+      border: 3px solid #9a6b36;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(229,190,103,.24), rgba(23,42,38,.9) 68%);
+      box-shadow: inset 0 0 0 3px #15120f, 0 0 0 2px rgba(211,167,83,.25), 0 4px 12px rgba(0,0,0,.65);
+    }
+
+    .hud-portrait-frame::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border: 1px solid rgba(242,211,144,.38);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    #hud-portrait {
+      width: 82px;
+      height: 82px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 8px 5px rgba(0,0,0,.66));
+    }
+
+    .hud-vitals { min-width: 0; }
+    #hero-name { color: #f6dc9b; font-family: "Batang", serif; font-size: 14px; }
+    .bar { border-color: #755632; background: #090d10; box-shadow: inset 0 0 0 2px rgba(0,0,0,.42); }
+    #minimap { border: 2px solid #6e522e; box-shadow: inset 0 0 0 2px rgba(4,8,9,.7); }
+
+    #pause-button {
+      border: 2px solid #9c6d36;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #31433a, #111a19);
+      box-shadow: inset 0 0 0 3px rgba(10,8,7,.6), 0 7px 18px rgba(0,0,0,.56);
+    }
+
     @media (max-width: 760px) {
+      .title-layout { grid-template-columns: 1fr; }
+      .title-mascot { min-height: 205px; margin-top: 14px; padding-bottom: 16px; }
+      .title-mascot img { width: 155px; height: 155px; }
+      .title-mascot strong { margin-top: -16px; }
+      .mascot-moon { top: 20px; width: 98px; height: 98px; }
       #character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .selection-panel { padding: 18px 12px; }
       .character-card { min-height: 185px; }
@@ -769,7 +1002,9 @@
       #choice-grid { grid-template-columns: 1fr; }
       .choice-card { min-height: 105px; }
       .modal-panel { max-height: 92vh; overflow: auto; padding: 20px 14px; }
-      .hud-card { min-width: 58vw; }
+      .hud-card { grid-template-columns: 58px minmax(0, 1fr); min-width: 62vw; padding: 9px 10px 8px 8px; }
+      .hud-portrait-frame { width: 54px; height: 54px; }
+      #hud-portrait { width: 62px; height: 62px; }
       .time-card { min-width: 150px; }
       #minimap-panel { width: 174px; }
       #minimap { width: 156px; height: 99px; }
@@ -783,8 +1018,13 @@
     }
 
     @media (max-width: 470px) {
+      .title-panel { padding-right: 14px; padding-left: 14px; }
       #character-grid { grid-template-columns: 1fr; }
       .character-card { min-height: 150px; }
+      .hud-card { grid-template-columns: 46px minmax(0, 1fr); min-width: 65vw; gap: 6px; padding: 7px; }
+      .hud-portrait-frame { width: 44px; height: 44px; border-width: 2px; }
+      #hud-portrait { width: 52px; height: 52px; }
+      #hero-name { margin-bottom: 3px; font-size: 11px; }
       .time-card { min-width: 126px; }
       #timer { font-size: 18px; }
       .sun-clock { grid-template-columns: 38px 1fr; gap: 6px; }
@@ -822,9 +1062,12 @@
     <aside id="hud" class="hidden" aria-live="polite">
       <div class="hud-top">
         <div class="hud-card">
-          <div id="hero-name">영웅</div>
-          <div class="bar-row"><b>HP</b><div class="bar"><i id="hp-fill"></i></div><span id="hp-text">0/0</span></div>
-          <div class="bar-row xp-row"><b>EXP</b><div class="bar"><i id="xp-fill"></i></div><span id="level-text">0/18 · LV 1</span></div>
+          <div class="hud-portrait-frame"><img id="hud-portrait" src="./assets/sprites/dokkaebi.png?v=20260808-1" alt="수호자 초상화" /></div>
+          <div class="hud-vitals">
+            <div id="hero-name">영웅</div>
+            <div class="bar-row"><b>HP</b><div class="bar"><i id="hp-fill"></i></div><span id="hp-text">0/0</span></div>
+            <div class="bar-row xp-row"><b>EXP</b><div class="bar"><i id="xp-fill"></i></div><span id="level-text">0/18 · LV 1</span></div>
+          </div>
         </div>
         <div class="time-card">
           <div class="sun-clock" aria-label="일몰까지 남은 시간">
@@ -856,15 +1099,25 @@
 
   <section id="title-screen" class="screen">
     <div class="title-panel">
-      <p class="eyebrow">KOREAN FOLKLORE SURVIVAL</p>
-      <h1><span class="title-mark">설화</span><br>밤의 사냥꾼</h1>
-      <p class="subtitle">MYTH SURVIVORS</p>
-      <div class="menu-actions">
-        <button id="start-button" class="game-button">모험 시작</button>
-        <button id="how-button" class="game-button secondary">게임 방법</button>
-        <button id="sound-button" class="game-button secondary">소리: 켜짐</button>
+      <div class="title-layout">
+        <div class="title-content">
+          <p class="eyebrow">KOREAN FOLKLORE SURVIVAL</p>
+          <h1><span class="title-mark">설화</span><br>밤의 사냥꾼</h1>
+          <p class="subtitle">MYTH SURVIVORS</p>
+          <div class="menu-actions">
+            <button id="start-button" class="game-button">모험 시작</button>
+            <button id="how-button" class="game-button secondary">게임 방법</button>
+            <button id="sound-button" class="game-button secondary">소리: 켜짐</button>
+          </div>
+          <p class="small-note">방향키 / WASD 이동 · 자동 공격 · ESC 일시정지 · M 음소거</p>
+        </div>
+        <aside class="title-mascot" aria-label="달빛 길잡이 구미호">
+          <span class="mascot-moon" aria-hidden="true"></span>
+          <img src="./assets/sprites/gumiho.png?v=20260808-1" alt="구미호 마스코트" />
+          <strong>달빛 길잡이</strong>
+          <em>구미호</em>
+        </aside>
       </div>
-      <p class="small-note">방향키 / WASD 이동 · 자동 공격 · ESC 일시정지 · M 음소거</p>
     </div>
   </section>
 
@@ -955,6 +1208,6 @@
 
   <script src="./src/sprite-data.js?v=20260807-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260807-12"></script>
+  <script src="./src/game.js?v=20260808-1"></script>
 </body>
 </html>
