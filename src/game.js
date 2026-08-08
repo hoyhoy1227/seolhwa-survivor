@@ -1,9 +1,10 @@
 const WIDTH = 960;
 const HEIGHT = 640;
-const WORLD_WIDTH = 2400;
-const WORLD_HEIGHT = 1800;
+const WORLD_WIDTH = 1536;
+const WORLD_HEIGHT = 1024;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-3';
+const SPRITE_VERSION = '20260808-4';
+const PLAYER_DISPLAY_SIZE = 132;
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -1049,7 +1050,7 @@ class GameScene extends Phaser.Scene {
       .setAlpha(0)
       .setVisible(true);
 
-    this.daylight = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0xfff0c7, .24)
+    this.daylight = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0xfff0c7, .04)
       .setOrigin(0)
       .setDepth(-6);
 
@@ -1079,60 +1080,14 @@ class GameScene extends Phaser.Scene {
     const backgroundKey = this.textures.exists(requestedBackgroundKey) ? requestedBackgroundKey : 'ground-forest';
     this.chapterBackground.setTexture(backgroundKey).setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setAlpha(1);
     const backgroundSource = this.textures.get(backgroundKey).getSourceImage();
-    const backgroundScale = Math.max(WORLD_WIDTH / backgroundSource.width, WORLD_HEIGHT / backgroundSource.height);
+    const backgroundScale = Math.min(WORLD_WIDTH / backgroundSource.width, WORLD_HEIGHT / backgroundSource.height);
     this.chapterBackground.setDisplaySize(backgroundSource.width * backgroundScale, backgroundSource.height * backgroundScale);
-    const groundTextureAlphas = [.08, .06, .055, .07, .055, .05];
-    this.ground.setTint(chapter.ground).setAlpha(groundTextureAlphas[index]);
-    const tileScales = [1.08, .78, 1.28, .7, 1.04, .88];
-    this.ground.tileScaleX = tileScales[index];
-    this.ground.tileScaleY = tileScales[index] * (index === 3 ? .82 : 1);
-    this.ground.tilePositionX = index * 137;
-    this.ground.tilePositionY = index * 89;
-    this.drawChapterTerrain(index, chapter);
-    this.terrain.setAlpha(.1);
-    this.pathDetails.setAlpha(.12);
-
+    // 원본 맵의 길, 건물, 수목 위를 덮던 생성형 타일과 장식층을 비운다.
+    this.ground.setAlpha(0);
+    this.terrain.clear();
+    this.pathDetails.clear();
     this.landmarks.clear();
-    const landmarkLayouts = [
-      [[250,260],[600,250],[1800,250],[2150,300],[270,1510],[720,1390],[1710,1420],[2110,1490]],
-      [[260,1280],[480,510],[760,1170],[1050,470],[1370,1320],[1660,620],[1950,1250],[2190,430]],
-      [[250,280],[610,300],[1200,260],[1790,300],[2150,280],[390,1460],[1200,1510],[2010,1450]],
-      [[260,360],[520,1390],[820,610],[1070,1320],[1370,470],[1620,1230],[1910,610],[2180,1430]],
-      [[310,300],[720,330],[1200,300],[1680,330],[2090,300],[520,1450],[1200,1500],[1880,1450]],
-      [[240,340],[500,1190],[780,560],[1060,1410],[1390,410],[1660,1250],[1940,620],[2190,1450]]
-    ];
-    const places = landmarkLayouts[index] || landmarkLayouts[0];
-    places.forEach(([x, y], marker) => {
-      const style = index % 6;
-      if (style === 0) {
-        this.landmarks.fillStyle(0x512424, .95).fillCircle(x, y, 26);
-        this.landmarks.lineStyle(5, chapter.accent, .85).strokeCircle(x, y, 34);
-        this.landmarks.fillStyle(0xffb33e, .78).fillCircle(x, y - 7, 9);
-      } else if (style === 1) {
-        this.landmarks.lineStyle(5, 0xf3c9da, .6).strokeCircle(x, y, 33);
-        this.landmarks.lineStyle(2, chapter.accent, .8).strokeCircle(x, y, 20);
-      } else if (style === 2) {
-        this.landmarks.fillStyle(0x473719, .9).fillRect(x - 30, y - 25, 60, 50);
-        this.landmarks.lineStyle(5, 0xe8c96a, .75).strokeRect(x - 30, y - 25, 60, 50);
-      } else if (style === 3) {
-        this.landmarks.fillStyle(0x263f35, .95).fillCircle(x, y + 16, 42);
-        this.landmarks.fillStyle(0x355d43, 1).fillTriangle(x - 36, y + 10, x, y - 48, x + 36, y + 10);
-      } else if (style === 4) {
-        this.landmarks.fillStyle(0x2c203b, .9).fillCircle(x, y, 31);
-        this.landmarks.lineStyle(4, 0x8f70b9, .8).strokeCircle(x, y, 31);
-        this.landmarks.fillStyle(0xc5e9ef, .75).fillCircle(x - 10, y - 5, 5).fillCircle(x + 10, y - 5, 5);
-      } else {
-        this.landmarks.lineStyle(4, 0x6f99cf, .7).strokeCircle(x, y, 29);
-        for (let petal = 0; petal < 6; petal += 1) {
-          const a = petal / 6 * Math.PI * 2;
-          this.landmarks.fillStyle(0x82b8ee, .65).fillCircle(x + Math.cos(a) * 24, y + Math.sin(a) * 24, 9);
-        }
-      }
-      if (marker % 2 === 0) this.landmarks.fillStyle(chapter.accent, .55).fillCircle(x, y, 4);
-    });
-    this.landmarks.setAlpha(.14);
-    this.drawChapterScenery(index, chapter);
-    this.scenery.setAlpha(.11);
+    this.scenery.clear();
     this.clearChapterProps();
     this.buildMapDevices(index, chapter);
   }
@@ -1466,7 +1421,7 @@ class GameScene extends Phaser.Scene {
 
   buildMapDevices(index, chapter) {
     this.clearMapDevices();
-    const positions = [
+    const sourcePositions = [
       [[820,650],[1580,1150],[520,1230]],
       [[640,650],[1780,640],[1670,1320]],
       [[740,610],[1660,610],[1200,1320]],
@@ -1474,6 +1429,7 @@ class GameScene extends Phaser.Scene {
       [[690,650],[1710,650],[1200,1370]],
       [[620,690],[1780,690],[1550,1330]]
     ][index];
+    const positions = sourcePositions.map(([x, y]) => [x / 2400 * WORLD_WIDTH, y / 1800 * WORLD_HEIGHT]);
     const types = ['brazier', 'mist', 'seal', 'windTotem', 'moonDrum', 'soulWell'];
     const spriteKeys = ['device-brazier', 'device-mist-stone', 'device-golden-seal', 'device-wind-totem', 'device-moon-drum', 'device-soul-well'];
     const spriteSizes = [118, 126, 132, 124, 126, 128];
@@ -1711,10 +1667,11 @@ class GameScene extends Phaser.Scene {
     this.state = 'running';
 
     this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, character.id)
-      .setDisplaySize(78, 78)
+      .setDisplaySize(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE)
       .setDepth(30)
       .setCollideWorldBounds(true);
-    this.player.body.setCircle(78, 50, 68);
+    // 큰 캐릭터 그림과 별개로 충돌 범위는 몸통 중심에 작게 유지한다.
+    this.player.body.setCircle(54, 74, 108);
     this.player.setData('baseScaleX', this.player.scaleX);
     this.player.setData('baseScaleY', this.player.scaleY);
     this.player.setData('spriteFacesLeft', Boolean(character.spriteFacesLeft));
@@ -2031,7 +1988,7 @@ class GameScene extends Phaser.Scene {
     this.ground.setTint(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
     this.sun.setAlpha(1 - dayMix).setPosition(WIDTH - 90 - dayMix * 100, 92 + dayMix * 55);
     this.moon.setAlpha(Math.max(0, dayMix * 1.4 - .4)).setPosition(92 + dayMix * 55, 92 - dayMix * 20);
-    this.daylight.setAlpha(.26 * (1 - Math.pow(dayMix, .72)));
+    this.daylight.setAlpha(.04 * (1 - Math.pow(dayMix, .72)));
     this.darkness.setAlpha(darkness);
 
     const lanternVisible = dayMix > .08;
@@ -3981,6 +3938,8 @@ class GameScene extends Phaser.Scene {
       [230, 250], [2140, 310], [300, 1480], [2050, 1430],
       [720, 620], [1690, 1180]
     ].forEach(([x, y]) => {
+      x = x / 2400 * WORLD_WIDTH;
+      y = y / 1800 * WORLD_HEIGHT;
       context.beginPath();
       context.arc(x * scaleX, y * scaleY, 8, 0, Math.PI * 2);
       context.fill();
