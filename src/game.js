@@ -3,12 +3,13 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 1536;
 const WORLD_HEIGHT = 1024;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-6';
+const SPRITE_VERSION = '20260808-7';
 const CAMERA_ZOOM = .82;
-const PLAYER_DISPLAY_SIZE = Math.round(132 / CAMERA_ZOOM);
+const PLAYER_DISPLAY_SIZE = Math.round((132 * .9) / CAMERA_ZOOM);
 const ENEMY_VISUAL_SCALE = 1.2 / CAMERA_ZOOM;
 const NORMAL_ENEMY_SPAWN_RATE_SCALE = .95;
 const SFX_MASTER_GAIN = .65;
+const IN_GAME_MUSIC_GAIN = .52;
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -508,6 +509,8 @@ class GameAudio {
     this.master = null;
     this.muted = false;
     this.night = false;
+    this.bgmTimer = null;
+    this.step = 0;
     let savedVolume = 65;
     try {
       const storedValue = window.localStorage.getItem(BGM_VOLUME_KEY);
@@ -517,10 +520,10 @@ class GameAudio {
       console.warn('BGM 볼륨 설정을 읽지 못했습니다.', error);
     }
     this.bgmVolume = Math.max(0, Math.min(100, savedVolume));
-    this.bgmTrack = new Audio(BGM_URL);
-    this.bgmTrack.loop = true;
-    this.bgmTrack.preload = 'metadata';
-    this.bgmTrack.volume = this.bgmVolume / 100;
+    this.menuTrack = new Audio(BGM_URL);
+    this.menuTrack.loop = true;
+    this.menuTrack.preload = 'metadata';
+    this.menuTrack.volume = this.bgmVolume / 100;
   }
 
   ensure() {
@@ -599,34 +602,78 @@ class GameAudio {
     [330, 440, 554, 740, 880].forEach((note, index) => this.tone(note, .36, 'square', .04, index * .11));
   }
 
-  startBgm() {
+  musicTone(frequency, duration, type, volume, delay = 0) {
+    this.tone(frequency, duration, type, volume * (this.bgmVolume / 100) * IN_GAME_MUSIC_GAIN, delay);
+  }
+
+  startMenuBgm() {
+    this.stopBgm();
     this.ensure();
-    this.bgmTrack.muted = this.muted;
-    this.bgmTrack.volume = this.bgmVolume / 100;
-    const playback = this.bgmTrack.play();
-    if (playback?.catch) playback.catch(error => console.warn('BGM 재생을 시작하지 못했습니다.', error));
+    this.menuTrack.muted = this.muted;
+    this.menuTrack.volume = this.bgmVolume / 100;
+    const playback = this.menuTrack.play();
+    if (playback?.catch) playback.catch(error => console.warn('메뉴 BGM 재생을 시작하지 못했습니다.', error));
+  }
+
+  startBgm() {
+    this.stopMenuBgm(true);
+    if (this.bgmTimer) return;
+    this.ensure();
+    const dayScale = [220, 277, 330, 370, 330, 277, 247, 277];
+    const nightScale = [147, 175, 220, 196, 165, 147, 131, 147];
+    const playStep = () => {
+      if (!this.context || this.muted) return;
+      const scale = this.night ? nightScale : dayScale;
+      const note = scale[this.step % scale.length];
+      this.musicTone(note, this.night ? .5 : .28, this.night ? 'triangle' : 'sine', .028);
+      if (this.step % 2 === 0) this.musicTone(note / 2, .45, 'sine', .016);
+      if (this.step % 4 === 2) this.musicTone(note * 2, .09, 'triangle', .012, .12);
+      this.step += 1;
+    };
+    playStep();
+    this.bgmTimer = window.setInterval(playStep, this.night ? 540 : 430);
   }
 
   setNight(isNight) {
     if (this.night === isNight) return;
     this.night = isNight;
+    if (this.bgmTimer) {
+      this.stopBgm();
+      this.startBgm();
+    }
   }
 
-  stopBgm(reset = false) {
-    this.bgmTrack.pause();
+  stopMenuBgm(reset = false) {
+    this.menuTrack.pause();
     if (reset) {
       try {
-        this.bgmTrack.currentTime = 0;
+        this.menuTrack.currentTime = 0;
       } catch (error) {
-        console.warn('BGM 재생 위치를 초기화하지 못했습니다.', error);
+        console.warn('메뉴 BGM 재생 위치를 초기화하지 못했습니다.', error);
       }
     }
+  }
+
+  stopBgm() {
+    if (this.bgmTimer) window.clearInterval(this.bgmTimer);
+    this.bgmTimer = null;
+  }
+
+  stopAllBgm(resetMenu = false) {
+    this.stopBgm();
+    this.stopMenuBgm(resetMenu);
+  }
+
+  previewBgmVolume() {
+    if (this.muted || this.bgmVolume <= 0) return;
+    this.musicTone(523, .13, 'sine', .055);
+    this.musicTone(659, .18, 'triangle', .045, .11);
   }
 
   setBgmVolume(value) {
     const volume = Math.round(Math.max(0, Math.min(100, Number(value) || 0)));
     this.bgmVolume = volume;
-    this.bgmTrack.volume = volume / 100;
+    this.menuTrack.volume = volume / 100;
     try {
       window.localStorage.setItem(BGM_VOLUME_KEY, String(volume));
     } catch (error) {
@@ -638,7 +685,7 @@ class GameAudio {
   toggleMute() {
     this.muted = !this.muted;
     if (this.master) this.master.gain.value = this.muted ? 0 : SFX_MASTER_GAIN;
-    this.bgmTrack.muted = this.muted;
+    this.menuTrack.muted = this.muted;
     return this.muted;
   }
 }
@@ -648,6 +695,7 @@ const audio = new GameAudio();
 const ui = {
   title: document.getElementById('title-screen'),
   how: document.getElementById('how-screen'),
+  settings: document.getElementById('settings-screen'),
   characters: document.getElementById('character-screen'),
   characterGrid: document.getElementById('character-grid'),
   story: document.getElementById('story-screen'),
@@ -711,9 +759,12 @@ function syncBgmVolumeControls(volume = audio.bgmVolume) {
   });
 }
 
+let volumePreviewTimer = null;
 document.querySelectorAll('.bgm-volume-slider').forEach(slider => {
   slider.addEventListener('input', event => {
     syncBgmVolumeControls(audio.setBgmVolume(event.currentTarget.value));
+    window.clearTimeout(volumePreviewTimer);
+    volumePreviewTimer = window.setTimeout(() => audio.previewBgmVolume(), 180);
   });
 });
 syncBgmVolumeControls();
@@ -732,6 +783,7 @@ function showToast(message, duration = 2200) {
 function hideScreens() {
   ui.title.classList.add('hidden');
   ui.how.classList.add('hidden');
+  ui.settings.classList.add('hidden');
   ui.characters.classList.add('hidden');
   ui.story.classList.add('hidden');
   ui.choice.classList.add('hidden');
@@ -897,7 +949,8 @@ function buildCharacterCards() {
 }
 
 function showTitle() {
-  audio.stopBgm(true);
+  audio.stopAllBgm(true);
+  audio.startMenuBgm();
   pendingIntroCharacter = null;
   window.clearTimeout(toastTimer);
   ui.toast.classList.remove('show');
@@ -916,12 +969,14 @@ function showTitle() {
 
 document.getElementById('start-button').addEventListener('click', () => {
   audio.ensure();
+  audio.startMenuBgm();
   audio.click();
   ui.title.classList.add('hidden');
   ui.characters.classList.remove('hidden');
 });
 
 document.getElementById('how-button').addEventListener('click', () => {
+  audio.startMenuBgm();
   audio.click();
   ui.title.classList.add('hidden');
   ui.how.classList.remove('hidden');
@@ -933,10 +988,26 @@ document.getElementById('how-back').addEventListener('click', () => {
   ui.title.classList.remove('hidden');
 });
 
+document.getElementById('settings-button').addEventListener('click', () => {
+  audio.startMenuBgm();
+  audio.click();
+  ui.title.classList.add('hidden');
+  ui.settings.classList.remove('hidden');
+});
+
+document.getElementById('settings-back').addEventListener('click', () => {
+  audio.click();
+  ui.settings.classList.add('hidden');
+  ui.title.classList.remove('hidden');
+});
+
 document.getElementById('sound-button').addEventListener('click', event => {
   const muted = audio.toggleMute();
-  event.currentTarget.textContent = `소리: ${muted ? '꺼짐' : '켜짐'}`;
-  if (!muted) audio.click();
+  event.currentTarget.textContent = `전체 소리: ${muted ? '꺼짐' : '켜짐'}`;
+  if (!muted) {
+    audio.startMenuBgm();
+    audio.click();
+  }
 });
 
 document.getElementById('selection-back').addEventListener('click', () => {
@@ -960,7 +1031,8 @@ ui.storyContinue.addEventListener('click', () => {
     pendingIntroCharacter = null;
     hideScreens();
     ui.hud.classList.remove('hidden');
-    // 클릭 제스처 안에서 재생을 시작해 브라우저의 자동 재생 제한을 해제한다.
+    // 제출된 WAV 메뉴 음악을 멈추고 기존 인게임 음악과 효과음으로 전환한다.
+    audio.stopMenuBgm(true);
     audio.startBgm();
     window.game.scene.start('GameScene', { character });
     return;
@@ -995,7 +1067,7 @@ document.addEventListener('keydown', event => {
   if (event.code === 'Escape' || event.code === 'KeyP') currentScene()?.togglePause();
   if (event.code === 'KeyM') {
     const muted = audio.toggleMute();
-    document.getElementById('sound-button').textContent = `소리: ${muted ? '꺼짐' : '켜짐'}`;
+    document.getElementById('sound-button').textContent = `전체 소리: ${muted ? '꺼짐' : '켜짐'}`;
     showToast(`소리 ${muted ? '꺼짐' : '켜짐'}`);
   }
 });

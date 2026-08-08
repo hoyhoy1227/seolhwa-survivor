@@ -801,6 +801,14 @@
       text-align: right;
     }
 
+    .volume-preview-note {
+      display: block;
+      margin-top: 8px;
+      color: #a99f8c;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
     #pause-screen .sound-settings { width: 100%; margin-top: 18px; }
 
     #portal-confirm-screen { background: rgba(4, 5, 13, .84); }
@@ -1166,7 +1174,7 @@
     <aside id="hud" class="hidden" aria-live="polite">
       <div class="hud-top">
         <div class="hud-card">
-          <div class="hud-portrait-frame"><img id="hud-portrait" src="./assets/sprites/dokkaebi.png?v=20260808-6" alt="수호자 초상화" /></div>
+          <div class="hud-portrait-frame"><img id="hud-portrait" src="./assets/sprites/dokkaebi.png?v=20260808-7" alt="수호자 초상화" /></div>
           <div class="hud-vitals">
             <div id="hero-name">영웅</div>
             <div class="bar-row"><b>HP</b><div class="bar"><i id="hp-fill"></i></div><span id="hp-text">0/0</span></div>
@@ -1211,24 +1219,36 @@
           <div class="menu-actions">
             <button id="start-button" class="game-button">모험 시작</button>
             <button id="how-button" class="game-button secondary">게임 방법</button>
-            <button id="sound-button" class="game-button secondary">소리: 켜짐</button>
-          </div>
-          <div class="sound-settings" aria-label="소리 설정">
-            <strong>소리 설정</strong>
-            <label class="bgm-volume-row" for="title-bgm-volume">
-              <span>BGM</span>
-              <input id="title-bgm-volume" class="bgm-volume-slider" type="range" min="0" max="100" step="1" value="65">
-              <output class="bgm-volume-value" for="title-bgm-volume">65</output>
-            </label>
+            <button id="settings-button" class="game-button secondary">게임 설정</button>
           </div>
           <p class="small-note">방향키 / WASD 이동 · 자동 공격 · ESC 일시정지 · M 음소거</p>
         </div>
         <aside class="title-mascot" aria-label="달빛 길잡이 구미호">
           <span class="mascot-moon" aria-hidden="true"></span>
-          <img src="./assets/sprites/gumiho.png?v=20260808-6" alt="구미호 마스코트" />
+          <img src="./assets/sprites/gumiho.png?v=20260808-7" alt="구미호 마스코트" />
           <strong>달빛 길잡이</strong>
           <em>구미호</em>
         </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings-screen" class="screen hidden" aria-labelledby="settings-heading">
+    <div class="modal-panel">
+      <p class="eyebrow">GAME SETTINGS</p>
+      <h2 id="settings-heading" class="section-heading">게임 설정</h2>
+      <div class="sound-settings" aria-label="게임 소리 설정">
+        <strong>소리 설정</strong>
+        <label class="bgm-volume-row" for="settings-bgm-volume">
+          <span>BGM</span>
+          <input id="settings-bgm-volume" class="bgm-volume-slider" type="range" min="0" max="100" step="1" value="65">
+          <output class="bgm-volume-value" for="settings-bgm-volume">65</output>
+        </label>
+        <small class="volume-preview-note">조절을 멈추면 현재 음량으로 짧은 확인음이 재생됩니다.</small>
+      </div>
+      <div class="menu-actions" style="margin-top:24px">
+        <button id="sound-button" class="game-button secondary">전체 소리: 켜짐</button>
+        <button id="settings-back" class="game-button">확인</button>
       </div>
     </div>
   </section>
@@ -1317,6 +1337,7 @@
           <input id="pause-bgm-volume" class="bgm-volume-slider" type="range" min="0" max="100" step="1" value="65">
           <output class="bgm-volume-value" for="pause-bgm-volume">65</output>
         </label>
+        <small class="volume-preview-note">조절을 멈추면 현재 음량으로 짧은 확인음이 재생됩니다.</small>
       </div>
       <div class="menu-actions" style="margin-top:24px">
         <button id="resume-button" class="game-button">계속하기</button>
@@ -1328,6 +1349,6 @@
 
   <script src="./src/sprite-data.js?v=20260807-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="./src/game.js?v=20260808-6"></script>
+  <script src="./src/game.js?v=20260808-7"></script>
 </body>
 </html>
