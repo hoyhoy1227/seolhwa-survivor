@@ -3,7 +3,7 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 1920;
 const WORLD_HEIGHT = 1280;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-11';
+const SPRITE_VERSION = '20260808-12';
 const CAMERA_ZOOM = .9;
 const PLAYER_DISPLAY_SIZE = (132 * .9 * .9 * .95 * .9) / CAMERA_ZOOM;
 const ENEMY_VISUAL_SCALE = 1.2 / CAMERA_ZOOM;
@@ -2513,7 +2513,15 @@ class GameScene extends Phaser.Scene {
       : this.chapterIndex === CAMPAIGN.length - 1
         ? 2 * FINAL_BOSS_CURRENT_HP_MULTIPLIER
         : 1.5;
-    boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55) * laterBossHpScale * requestedBossHpScale;
+    const lateChapterBossHpBoost = this.chapterIndex === 4
+      ? 1.5
+      : this.chapterIndex === 5
+        ? 2
+        : 1;
+    boss.hp = (1200 * (1 + this.chapterIndex * .18) * chapter.bossHpScale + this.level * 55)
+      * laterBossHpScale
+      * requestedBossHpScale
+      * lateChapterBossHpBoost;
     boss.maxHp = boss.hp;
     boss.damage = (13 + this.chapterIndex * 3.4) * chapter.damageScale * laterBossDamageScale * ENEMY_DAMAGE_SCALE;
     boss.speed = 44 + this.chapterIndex * 3;
