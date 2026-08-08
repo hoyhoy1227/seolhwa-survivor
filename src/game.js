@@ -3,13 +3,15 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 1536;
 const WORLD_HEIGHT = 1024;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-7';
+const SPRITE_VERSION = '20260808-8';
 const CAMERA_ZOOM = .82;
-const PLAYER_DISPLAY_SIZE = Math.round((132 * .9) / CAMERA_ZOOM);
+const PLAYER_DISPLAY_SIZE = Math.round((132 * .9) / CAMERA_ZOOM) * .9;
 const ENEMY_VISUAL_SCALE = 1.2 / CAMERA_ZOOM;
 const NORMAL_ENEMY_SPAWN_RATE_SCALE = .95;
 const SFX_MASTER_GAIN = .65;
 const IN_GAME_MUSIC_GAIN = .52;
+const MENU_BGM_VOLUME_OFFSET = -10;
+const IN_GAME_BGM_VOLUME_OFFSET = 10;
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -523,7 +525,16 @@ class GameAudio {
     this.menuTrack = new Audio(BGM_URL);
     this.menuTrack.loop = true;
     this.menuTrack.preload = 'metadata';
-    this.menuTrack.volume = this.bgmVolume / 100;
+    this.menuTrack.volume = this.getMenuBgmVolume();
+  }
+
+  getMenuBgmVolume() {
+    return Math.max(0, Math.min(100, this.bgmVolume + MENU_BGM_VOLUME_OFFSET)) / 100;
+  }
+
+  getInGameBgmVolume() {
+    if (this.bgmVolume <= 0) return 0;
+    return Math.max(0, Math.min(100, this.bgmVolume + IN_GAME_BGM_VOLUME_OFFSET)) / 100;
   }
 
   ensure() {
@@ -603,14 +614,14 @@ class GameAudio {
   }
 
   musicTone(frequency, duration, type, volume, delay = 0) {
-    this.tone(frequency, duration, type, volume * (this.bgmVolume / 100) * IN_GAME_MUSIC_GAIN, delay);
+    this.tone(frequency, duration, type, volume * this.getInGameBgmVolume() * IN_GAME_MUSIC_GAIN, delay);
   }
 
   startMenuBgm() {
     this.stopBgm();
     this.ensure();
     this.menuTrack.muted = this.muted;
-    this.menuTrack.volume = this.bgmVolume / 100;
+    this.menuTrack.volume = this.getMenuBgmVolume();
     const playback = this.menuTrack.play();
     if (playback?.catch) playback.catch(error => console.warn('메뉴 BGM 재생을 시작하지 못했습니다.', error));
   }
@@ -673,7 +684,7 @@ class GameAudio {
   setBgmVolume(value) {
     const volume = Math.round(Math.max(0, Math.min(100, Number(value) || 0)));
     this.bgmVolume = volume;
-    this.menuTrack.volume = volume / 100;
+    this.menuTrack.volume = this.getMenuBgmVolume();
     try {
       window.localStorage.setItem(BGM_VOLUME_KEY, String(volume));
     } catch (error) {
