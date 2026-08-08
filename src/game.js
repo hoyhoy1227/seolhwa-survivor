@@ -3,7 +3,7 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-2';
+const SPRITE_VERSION = '20260808-3';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -664,6 +664,13 @@ function currentScene() {
   return window.game?.scene.getScene('GameScene');
 }
 
+function markGameReady() {
+  const button = document.getElementById('start-button');
+  window.GAME_READY = true;
+  button.disabled = false;
+  button.textContent = button.dataset.readyLabel || '모험 시작';
+}
+
 function renderStoryDetails(details) {
   ui.storyDetails.innerHTML = '';
   details.forEach(({ label, text, emphasis }) => {
@@ -903,6 +910,9 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.on('loaderror', file => {
+      console.error(`게임 이미지 로드 실패: ${file?.key || file?.src || 'unknown'}`);
+    });
     Object.entries(EMBEDDED_TEXTURE_FILES).forEach(([key, fileName]) => {
       if (this.textures.exists(key)) return;
       const decodedImage = window.DECODED_SPRITES?.[fileName];
@@ -967,6 +977,8 @@ class GameScene extends Phaser.Scene {
       audio.stopBgm();
     });
 
+    markGameReady();
+
     if (this.initialCharacter) {
       this.time.delayedCall(0, () => this.beginRun(this.initialCharacter));
     }
@@ -1000,7 +1012,9 @@ class GameScene extends Phaser.Scene {
       ...CHAPTER_BACKGROUND_FILES.map((fileName, index) => chapterBackgroundKey(index))
     ];
     highResolutionTextureKeys.forEach(key => {
-      if (this.textures.exists(key)) this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      if (!this.textures.exists(key)) return;
+      const texture = this.textures.get(key);
+      if (typeof texture.setFilter === 'function') texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
     });
   }
 
@@ -1012,7 +1026,8 @@ class GameScene extends Phaser.Scene {
     this.groundBase = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x263b2e)
       .setOrigin(0)
       .setDepth(-32);
-    this.chapterBackground = this.add.image(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, chapterBackgroundKey(0))
+    const initialBackgroundKey = this.textures.exists(chapterBackgroundKey(0)) ? chapterBackgroundKey(0) : 'ground-forest';
+    this.chapterBackground = this.add.image(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, initialBackgroundKey)
       .setDepth(-31);
     this.ground = this.add.tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 'ground-forest')
       .setOrigin(0)
@@ -1060,7 +1075,8 @@ class GameScene extends Phaser.Scene {
   applyChapterTheme(index) {
     const chapter = CAMPAIGN[index] || CAMPAIGN[0];
     this.groundBase.setFillStyle(chapter.ground, 1);
-    const backgroundKey = chapterBackgroundKey(index);
+    const requestedBackgroundKey = chapterBackgroundKey(index);
+    const backgroundKey = this.textures.exists(requestedBackgroundKey) ? requestedBackgroundKey : 'ground-forest';
     this.chapterBackground.setTexture(backgroundKey).setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setAlpha(1);
     const backgroundSource = this.textures.get(backgroundKey).getSourceImage();
     const backgroundScale = Math.max(WORLD_WIDTH / backgroundSource.width, WORLD_HEIGHT / backgroundSource.height);
@@ -1622,9 +1638,9 @@ class GameScene extends Phaser.Scene {
   }
 
   beginRun(character) {
-    if (this.missingSpriteKeys?.length) {
+    if (!this.textures.exists(character?.id)) {
       showTitle();
-      showToast('스프라이트를 불러오지 못했습니다. Ctrl+F5로 새로고침해 주세요.', 5000);
+      showToast('선택한 수호자 이미지를 불러오지 못했습니다. Ctrl+F5로 새로고침해 주세요.', 5000);
       return;
     }
     if (!isCharacterUnlocked(character)) {
@@ -4118,8 +4134,10 @@ const config = {
 
 const startButton = document.getElementById('start-button');
 const defaultStartLabel = startButton.textContent;
+window.GAME_READY = false;
+startButton.dataset.readyLabel = defaultStartLabel;
 startButton.disabled = true;
-startButton.textContent = '스프라이트 불러오는 중...';
+startButton.textContent = '게임 이미지 불러오는 중...';
 
 decodeEmbeddedSprites()
   .then(decodedSprites => {
@@ -4131,6 +4149,4 @@ decodeEmbeddedSprites()
   })
   .finally(() => {
     window.game = new Phaser.Game(config);
-    startButton.disabled = false;
-    startButton.textContent = defaultStartLabel;
   });
