@@ -3,8 +3,10 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 1536;
 const WORLD_HEIGHT = 1024;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-4';
+const SPRITE_VERSION = '20260808-5';
 const PLAYER_DISPLAY_SIZE = 132;
+const ENEMY_VISUAL_SCALE = 1.2;
+const NORMAL_ENEMY_SPAWN_RATE_SCALE = .95;
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -22,6 +24,7 @@ const CHOICE_EXIT_INVULNERABILITY_MS = 500;
 const LEVEL_MAX_HP_GROWTH = .05;
 const LATE_CHAPTER_NORMAL_DAMAGE_SCALE = .97;
 const SEJONG_UNLOCK_KEY = 'seolhwa-survivor:sejong-unlocked';
+const BGM_VOLUME_KEY = 'seolhwa-survivor:bgm-volume';
 const HANGUL_GLYPHS = Object.freeze(['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하']);
 const HERO_ATTACK_PALETTES = Object.freeze({
   dokkaebi: Object.freeze({ primary: 0xff9a32, secondary: 0xffe29a }),
@@ -38,6 +41,7 @@ const SPRITE_BASE = new URL('./assets/sprites/', document.baseURI).href.replace(
 const remoteSpriteUrl = fileName => `${SPRITE_BASE}/${fileName}?v=${SPRITE_VERSION}`;
 const spriteUrl = fileName => window.EMBEDDED_SPRITES?.[fileName] || remoteSpriteUrl(fileName);
 const BACKGROUND_BASE = new URL('./assets/backgrounds/', document.baseURI).href.replace(/\/$/, '');
+const BGM_URL = new URL(`./assets/audio/bgm-hwiririk-8bit.wav?v=${SPRITE_VERSION}`, document.baseURI).href;
 const CHAPTER_BACKGROUND_FILES = Object.freeze([
   'chapter-01-dokkaebi-market-v1.png',
   'chapter-02-fox-pass-v1.png',
@@ -467,9 +471,20 @@ class GameAudio {
     this.context = null;
     this.master = null;
     this.muted = false;
-    this.bgmTimer = null;
-    this.step = 0;
     this.night = false;
+    let savedVolume = 80;
+    try {
+      const storedValue = window.localStorage.getItem(BGM_VOLUME_KEY);
+      const storedVolume = Number(storedValue);
+      if (storedValue !== null && Number.isFinite(storedVolume)) savedVolume = storedVolume;
+    } catch (error) {
+      console.warn('BGM 볼륨 설정을 읽지 못했습니다.', error);
+    }
+    this.bgmVolume = Math.max(0, Math.min(100, savedVolume));
+    this.bgmTrack = new Audio(BGM_URL);
+    this.bgmTrack.loop = true;
+    this.bgmTrack.preload = 'metadata';
+    this.bgmTrack.volume = this.bgmVolume / 100;
   }
 
   ensure() {
@@ -549,37 +564,45 @@ class GameAudio {
   }
 
   startBgm() {
-    this.stopBgm();
     this.ensure();
-    const dayScale = [220, 277, 330, 370, 330, 277, 247, 277];
-    const nightScale = [147, 175, 220, 196, 165, 147, 131, 147];
-    const playStep = () => {
-      if (!this.context || this.muted) return;
-      const scale = this.night ? nightScale : dayScale;
-      const note = scale[this.step % scale.length];
-      this.tone(note, this.night ? .5 : .28, this.night ? 'triangle' : 'sine', .028);
-      if (this.step % 2 === 0) this.tone(note / 2, .45, 'sine', .016);
-      if (this.step % 4 === 2) this.tone(note * 2, .09, 'triangle', .012, .12);
-      this.step += 1;
-    };
-    playStep();
-    this.bgmTimer = window.setInterval(playStep, this.night ? 540 : 430);
+    this.bgmTrack.muted = this.muted;
+    this.bgmTrack.volume = this.bgmVolume / 100;
+    const playback = this.bgmTrack.play();
+    if (playback?.catch) playback.catch(error => console.warn('BGM 재생을 시작하지 못했습니다.', error));
   }
 
   setNight(isNight) {
     if (this.night === isNight) return;
     this.night = isNight;
-    if (this.bgmTimer) this.startBgm();
   }
 
-  stopBgm() {
-    if (this.bgmTimer) window.clearInterval(this.bgmTimer);
-    this.bgmTimer = null;
+  stopBgm(reset = false) {
+    this.bgmTrack.pause();
+    if (reset) {
+      try {
+        this.bgmTrack.currentTime = 0;
+      } catch (error) {
+        console.warn('BGM 재생 위치를 초기화하지 못했습니다.', error);
+      }
+    }
+  }
+
+  setBgmVolume(value) {
+    const volume = Math.round(Math.max(0, Math.min(100, Number(value) || 0)));
+    this.bgmVolume = volume;
+    this.bgmTrack.volume = volume / 100;
+    try {
+      window.localStorage.setItem(BGM_VOLUME_KEY, String(volume));
+    } catch (error) {
+      console.warn('BGM 볼륨 설정을 저장하지 못했습니다.', error);
+    }
+    return volume;
   }
 
   toggleMute() {
     this.muted = !this.muted;
     if (this.master) this.master.gain.value = this.muted ? 0 : .22;
+    this.bgmTrack.muted = this.muted;
     return this.muted;
   }
 }
@@ -639,6 +662,24 @@ const ui = {
   pauseHeading: document.querySelector('#pause-screen .section-heading'),
   resume: document.getElementById('resume-button')
 };
+
+function syncBgmVolumeControls(volume = audio.bgmVolume) {
+  const normalized = Math.round(Math.max(0, Math.min(100, volume)));
+  document.querySelectorAll('.bgm-volume-slider').forEach(slider => {
+    slider.value = String(normalized);
+    slider.setAttribute('aria-valuetext', `${normalized}%`);
+  });
+  document.querySelectorAll('.bgm-volume-value').forEach(output => {
+    output.textContent = `${normalized}`;
+  });
+}
+
+document.querySelectorAll('.bgm-volume-slider').forEach(slider => {
+  slider.addEventListener('input', event => {
+    syncBgmVolumeControls(audio.setBgmVolume(event.currentTarget.value));
+  });
+});
+syncBgmVolumeControls();
 
 let toastTimer = null;
 let pendingIntroCharacter = null;
@@ -794,7 +835,7 @@ function buildCharacterCards() {
 }
 
 function showTitle() {
-  audio.stopBgm();
+  audio.stopBgm(true);
   pendingIntroCharacter = null;
   window.clearTimeout(toastTimer);
   ui.toast.classList.remove('show');
@@ -857,6 +898,8 @@ ui.storyContinue.addEventListener('click', () => {
     pendingIntroCharacter = null;
     hideScreens();
     ui.hud.classList.remove('hidden');
+    // 클릭 제스처 안에서 재생을 시작해 브라우저의 자동 재생 제한을 해제한다.
+    audio.startBgm();
     window.game.scene.start('GameScene', { character });
     return;
   }
@@ -2056,6 +2099,8 @@ class GameScene extends Phaser.Scene {
       enemy.setAngle(Math.sin(this.time.now * .012 + enemy.x * .03) * (enemy.kind === 'ranged' ? 2 : 3.5));
     });
 
+    this.separateBossesFromOtherEnemies();
+
     this.orbs.getChildren().forEach(orb => {
       if (!orb.active) return;
       const distance = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
@@ -2150,12 +2195,12 @@ class GameScene extends Phaser.Scene {
       this.nextSpawnAt = this.time.now + 320;
       return;
     }
-    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) * firstChapterIntervalScale / laterChapterPressure;
+    const interval = Phaser.Math.Linear(1720, 360, Math.pow(progress, 1.28)) * chapter.spawnScale * (1 - overtime * .24) * firstChapterIntervalScale / laterChapterPressure / NORMAL_ENEMY_SPAWN_RATE_SCALE;
     const laterMapBatch = laterMap ? 2 + Math.floor(this.chapterIndex * .8) : 0;
     const batch = 1 + Math.floor(progress * 2.65) + laterMapBatch + (progress > .76 ? 1 : 0) + Math.floor(overtime * 2);
     for (let index = 0; index < batch; index += 1) this.spawnEnemy(false);
-    const minimumInterval = laterMap ? Math.max(105, 165 - this.chapterIndex * 12) : 180 * firstChapterIntervalScale;
-    const bossInterval = laterMap ? Math.max(190, 340 - this.chapterIndex * 28) : 360 * firstChapterIntervalScale;
+    const minimumInterval = (laterMap ? Math.max(105, 165 - this.chapterIndex * 12) : 180 * firstChapterIntervalScale) / NORMAL_ENEMY_SPAWN_RATE_SCALE;
+    const bossInterval = (laterMap ? Math.max(190, 340 - this.chapterIndex * 28) : 360 * firstChapterIntervalScale) / NORMAL_ENEMY_SPAWN_RATE_SCALE;
     this.nextSpawnAt = this.time.now + (this.activeBoss?.active ? Math.max(bossInterval, interval * .9) : Math.max(minimumInterval, interval));
   }
 
@@ -2186,7 +2231,7 @@ class GameScene extends Phaser.Scene {
     const fallbackTexture = ranged ? 'enemy-ranged' : 'enemy-melee';
     const texture = this.textures.exists(preferredTexture) ? preferredTexture : fallbackTexture;
     const normalSize = ranged ? 58 : texture === 'enemy-gaksi' ? 62 : 64;
-    const displaySize = Math.round(normalSize * (elite ? 1.24 : 1));
+    const displaySize = Math.round(normalSize * (elite ? 1.24 : 1) * ENEMY_VISUAL_SCALE);
     const shadow = this.add.ellipse(x, y + displaySize * .34, displaySize * .66, displaySize * .22, 0x050508, ranged ? .28 : .4)
       .setDepth(17);
     const enemy = this.enemies.create(x, y, texture)
@@ -2213,7 +2258,61 @@ class GameScene extends Phaser.Scene {
     const baseTint = elite ? 0xf0a33a : chapterTints[this.chapterIndex];
     enemy.setData('baseTint', baseTint);
     enemy.setTint(baseTint);
+    this.separateBossesFromOtherEnemies();
     return enemy;
+  }
+
+  separateEnemyFromBoss(enemy, boss) {
+    if (!enemy?.active || !boss?.active || enemy === boss) return false;
+    // 회전된 정사각형 이미지의 대각선까지 포함해 시각적으로 겹치지 않게 한다.
+    const enemyRadius = Math.max(enemy.displayWidth, enemy.displayHeight) * .71;
+    const bossRadius = Math.max(boss.displayWidth, boss.displayHeight) * .71;
+    const minimumDistance = enemyRadius + bossRadius + 18;
+    const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, boss.x, boss.y);
+    if (distance >= minimumDistance) return false;
+
+    const baseAngle = distance > .01
+      ? Phaser.Math.Angle.Between(boss.x, boss.y, enemy.x, enemy.y)
+      : Phaser.Math.Angle.Between(boss.x, boss.y, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
+    const margin = Math.max(34, enemyRadius * .72);
+    const candidates = [baseAngle, baseAngle + Math.PI, baseAngle + Math.PI / 2, baseAngle - Math.PI / 2];
+    let best = null;
+    candidates.forEach(angle => {
+      const x = Phaser.Math.Clamp(boss.x + Math.cos(angle) * minimumDistance, margin, WORLD_WIDTH - margin);
+      const y = Phaser.Math.Clamp(boss.y + Math.sin(angle) * minimumDistance, margin, WORLD_HEIGHT - margin);
+      const clearance = Phaser.Math.Distance.Between(x, y, boss.x, boss.y);
+      if (!best || clearance > best.clearance) best = { x, y, clearance };
+    });
+    if (!best) return false;
+
+    enemy.setPosition(best.x, best.y);
+    const awayX = best.x - boss.x;
+    const awayY = best.y - boss.y;
+    const awayLength = Math.max(.001, Math.hypot(awayX, awayY));
+    const normalX = awayX / awayLength;
+    const normalY = awayY / awayLength;
+    const inwardVelocity = enemy.body.velocity.x * normalX + enemy.body.velocity.y * normalY;
+    if (inwardVelocity < 0) {
+      enemy.body.velocity.x -= inwardVelocity * normalX;
+      enemy.body.velocity.y -= inwardVelocity * normalY;
+    }
+    const shadow = enemy.getData('shadow');
+    if (shadow?.active) shadow.setPosition(enemy.x, enemy.y + enemy.displayHeight * .34);
+    return true;
+  }
+
+  separateBossesFromOtherEnemies() {
+    if (!this.enemies) return;
+    const activeEnemies = this.enemies.getChildren().filter(enemy => enemy.active);
+    const bosses = activeEnemies
+      .filter(enemy => enemy.kind === 'boss' || enemy.isMidBoss)
+      .sort((left, right) => Number(right.kind === 'boss') - Number(left.kind === 'boss'));
+    bosses.forEach(boss => {
+      activeEnemies.forEach(enemy => {
+        if (enemy === boss || enemy.kind === 'boss') return;
+        this.separateEnemyFromBoss(enemy, boss);
+      });
+    });
   }
 
   spawnMidBoss(order) {
@@ -2236,6 +2335,7 @@ class GameScene extends Phaser.Scene {
     enemy.setTint(0xffb44f);
     const shadow = enemy.getData('shadow');
     if (shadow?.active) shadow.setScale(1.35, 1.35).setAlpha(.56);
+    this.separateBossesFromOtherEnemies();
     this.createDevicePulse(enemy.x, enemy.y, chapter.accent, 92);
     this.cameras.main.shake(260, .005);
   }
@@ -2305,8 +2405,9 @@ class GameScene extends Phaser.Scene {
     const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * 390, 120, WORLD_WIDTH - 120);
     const y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * 390, 120, WORLD_HEIGHT - 120);
-    const shadow = this.add.ellipse(x, y + 62, 132, 42, 0x050508, .58).setDepth(18);
-    const boss = this.enemies.create(x, y, chapter.bossTexture).setDisplaySize(190, 190).setDepth(24);
+    const bossDisplaySize = Math.round(190 * ENEMY_VISUAL_SCALE);
+    const shadow = this.add.ellipse(x, y + 62 * ENEMY_VISUAL_SCALE, 132 * ENEMY_VISUAL_SCALE, 42 * ENEMY_VISUAL_SCALE, 0x050508, .58).setDepth(18);
+    const boss = this.enemies.create(x, y, chapter.bossTexture).setDisplaySize(bossDisplaySize, bossDisplaySize).setDepth(24);
     boss.body.setCircle(88, 40, 74);
     boss.kind = 'boss';
     const laterBossHpScale = this.chapterIndex === 0 ? 1 : 2.05 + this.chapterIndex * .35;
@@ -2333,6 +2434,7 @@ class GameScene extends Phaser.Scene {
     boss.setData('lastLegacyPattern', null);
     boss.setData('nextSummonAt', this.chapterIndex === CAMPAIGN.length - 1 ? this.time.now + 7200 : Infinity);
     this.activeBoss = boss;
+    this.separateBossesFromOtherEnemies();
     ui.bossName.textContent = `${chapter.bossName} · ${this.chapterIndex + 1}번째 설화`;
     ui.bossFill.style.width = '100%';
     ui.bossPanel.classList.remove('hidden');
