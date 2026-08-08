@@ -3,10 +3,12 @@ const HEIGHT = 640;
 const WORLD_WIDTH = 1536;
 const WORLD_HEIGHT = 1024;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-5';
-const PLAYER_DISPLAY_SIZE = 132;
-const ENEMY_VISUAL_SCALE = 1.2;
+const SPRITE_VERSION = '20260808-6';
+const CAMERA_ZOOM = .82;
+const PLAYER_DISPLAY_SIZE = Math.round(132 / CAMERA_ZOOM);
+const ENEMY_VISUAL_SCALE = 1.2 / CAMERA_ZOOM;
 const NORMAL_ENEMY_SPAWN_RATE_SCALE = .95;
+const SFX_MASTER_GAIN = .65;
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -246,6 +248,40 @@ async function decodeEmbeddedSprites() {
   return Object.fromEntries(decoded);
 }
 
+async function decodeChapterBackgrounds(maxAttempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let completed = 0;
+    try {
+      const decoded = await Promise.all(CHAPTER_BACKGROUND_FILES.map(fileName => new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          completed += 1;
+          updateMapLoadingScreen(
+            completed / CHAPTER_BACKGROUND_FILES.length,
+            `한국 설화 지도 확인 중… ${completed} / ${CHAPTER_BACKGROUND_FILES.length}`
+          );
+          resolve([fileName, image]);
+        };
+        image.onerror = () => reject(new Error(`Chapter background decode failed: ${fileName}`));
+        image.src = chapterBackgroundUrl(fileName);
+      })));
+      return Object.fromEntries(decoded);
+    } catch (error) {
+      lastError = error;
+      updateMapLoadingScreen(
+        completed / CHAPTER_BACKGROUND_FILES.length,
+        `맵 이미지를 다시 확인하는 중… (${attempt}/${maxAttempts})`,
+        true
+      );
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => window.setTimeout(resolve, 450 * attempt));
+      }
+    }
+  }
+  throw lastError || new Error('Chapter backgrounds failed to load.');
+}
+
 const SKILLS = [
   {
     id: 'fire',
@@ -472,7 +508,7 @@ class GameAudio {
     this.master = null;
     this.muted = false;
     this.night = false;
-    let savedVolume = 80;
+    let savedVolume = 65;
     try {
       const storedValue = window.localStorage.getItem(BGM_VOLUME_KEY);
       const storedVolume = Number(storedValue);
@@ -493,7 +529,7 @@ class GameAudio {
       if (!AudioContextClass) return;
       this.context = new AudioContextClass();
       this.master = this.context.createGain();
-      this.master.gain.value = this.muted ? 0 : .22;
+      this.master.gain.value = this.muted ? 0 : SFX_MASTER_GAIN;
       this.master.connect(this.context.destination);
     }
     if (this.context.state === 'suspended') this.context.resume();
@@ -601,7 +637,7 @@ class GameAudio {
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.master) this.master.gain.value = this.muted ? 0 : .22;
+    if (this.master) this.master.gain.value = this.muted ? 0 : SFX_MASTER_GAIN;
     this.bgmTrack.muted = this.muted;
     return this.muted;
   }
@@ -660,6 +696,7 @@ const ui = {
   pause: document.getElementById('pause-screen'),
   pauseKicker: document.querySelector('#pause-screen .eyebrow'),
   pauseHeading: document.querySelector('#pause-screen .section-heading'),
+  pauseSoundSettings: document.getElementById('pause-sound-settings'),
   resume: document.getElementById('resume-button')
 };
 
@@ -706,11 +743,36 @@ function currentScene() {
   return window.game?.scene.getScene('GameScene');
 }
 
-function markGameReady() {
+function updateMapLoadingScreen(progress, message, failed = false) {
+  const screen = document.getElementById('map-loading-screen');
+  const label = document.getElementById('map-loading-message');
+  const fill = document.getElementById('map-loading-fill');
+  if (!screen || !label || !fill) return;
+  const normalized = Math.max(0, Math.min(1, Number(progress) || 0));
+  fill.style.width = `${Math.round(normalized * 100)}%`;
+  fill.style.background = failed ? '#b43d38' : '';
+  label.textContent = message;
+}
+
+function markGameReady(scene) {
+  const missingBackgrounds = CHAPTER_BACKGROUND_FILES
+    .map((fileName, index) => ({ fileName, key: chapterBackgroundKey(index) }))
+    .filter(({ key }) => !scene?.textures?.exists(key));
+  if (missingBackgrounds.length) {
+    const missingNames = missingBackgrounds.map(({ fileName }) => fileName).join(', ');
+    console.error(`Chapter backgrounds failed to load: ${missingNames}`);
+    updateMapLoadingScreen(0, '맵 이미지를 불러오지 못했습니다. 새로고침해 주세요.', true);
+    return false;
+  }
   const button = document.getElementById('start-button');
   window.GAME_READY = true;
   button.disabled = false;
   button.textContent = button.dataset.readyLabel || '모험 시작';
+  updateMapLoadingScreen(1, '지도 준비 완료');
+  const loadingScreen = document.getElementById('map-loading-screen');
+  loadingScreen?.classList.add('ready');
+  window.setTimeout(() => loadingScreen?.classList.add('hidden'), 280);
+  return true;
 }
 
 function renderStoryDetails(details) {
@@ -954,8 +1016,14 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.on('progress', progress => {
+      updateMapLoadingScreen(progress, `한국 설화 지도를 불러오는 중… ${Math.round(progress * 100)}%`);
+    });
     this.load.on('loaderror', file => {
       console.error(`게임 이미지 로드 실패: ${file?.key || file?.src || 'unknown'}`);
+      if (String(file?.key || '').startsWith('chapter-background-')) {
+        updateMapLoadingScreen(0, '맵 이미지를 다시 불러오는 중입니다…', true);
+      }
     });
     Object.entries(EMBEDDED_TEXTURE_FILES).forEach(([key, fileName]) => {
       if (this.textures.exists(key)) return;
@@ -965,7 +1033,10 @@ class GameScene extends Phaser.Scene {
     });
     CHAPTER_BACKGROUND_FILES.forEach((fileName, index) => {
       const key = chapterBackgroundKey(index);
-      if (!this.textures.exists(key)) this.load.image(key, chapterBackgroundUrl(fileName));
+      if (this.textures.exists(key)) return;
+      const decodedImage = window.DECODED_BACKGROUNDS?.[fileName];
+      if (decodedImage) this.textures.addImage(key, decodedImage);
+      else this.load.image(key, chapterBackgroundUrl(fileName));
     });
   }
 
@@ -1021,7 +1092,7 @@ class GameScene extends Phaser.Scene {
       audio.stopBgm();
     });
 
-    markGameReady();
+    markGameReady(this);
 
     if (this.initialCharacter) {
       this.time.delayedCall(0, () => this.beginRun(this.initialCharacter));
@@ -1065,6 +1136,7 @@ class GameScene extends Phaser.Scene {
   createWorld() {
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setZoom(CAMERA_ZOOM);
     this.cameras.main.roundPixels = false;
 
     this.groundBase = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x263b2e)
@@ -1122,9 +1194,7 @@ class GameScene extends Phaser.Scene {
     const requestedBackgroundKey = chapterBackgroundKey(index);
     const backgroundKey = this.textures.exists(requestedBackgroundKey) ? requestedBackgroundKey : 'ground-forest';
     this.chapterBackground.setTexture(backgroundKey).setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).setAlpha(1);
-    const backgroundSource = this.textures.get(backgroundKey).getSourceImage();
-    const backgroundScale = Math.min(WORLD_WIDTH / backgroundSource.width, WORLD_HEIGHT / backgroundSource.height);
-    this.chapterBackground.setDisplaySize(backgroundSource.width * backgroundScale, backgroundSource.height * backgroundScale);
+    this.chapterBackground.setDisplaySize(WORLD_WIDTH, WORLD_HEIGHT);
     // 원본 맵의 길, 건물, 수목 위를 덮던 생성형 타일과 장식층을 비운다.
     this.ground.setAlpha(0);
     this.terrain.clear();
@@ -3379,6 +3449,7 @@ class GameScene extends Phaser.Scene {
 
   showPortalConfirmation(portal) {
     if (!portal?.active || this.state !== 'running') return;
+    audio.startBgm();
     const finalChapter = this.chapterIndex >= CAMPAIGN.length - 1;
     const nextChapter = CAMPAIGN[this.chapterIndex + 1];
     this.pendingPortal = portal;
@@ -3451,7 +3522,6 @@ class GameScene extends Phaser.Scene {
     }
     this.state = 'transition';
     this.physics.pause();
-    audio.stopBgm();
     this.chapterIndex += 1;
     this.elapsed = 0;
     this.chapterKills = 0;
@@ -3508,6 +3578,7 @@ class GameScene extends Phaser.Scene {
     ui.pauseHeading.textContent = sejongNewlyUnlocked
       ? `여섯 설화를 모두 구했습니다 · 세종대왕 해금! 다음 판부터 선택할 수 있습니다.`
       : `여섯 설화를 모두 구했습니다 · 총 ${this.kills}마리 처치`;
+    ui.pauseSoundSettings.classList.add('hidden');
     ui.resume.classList.add('hidden');
     ui.pause.classList.remove('hidden');
   }
@@ -4132,6 +4203,7 @@ class GameScene extends Phaser.Scene {
   resetPauseCopy() {
     ui.pauseKicker.textContent = 'PAUSED';
     ui.pauseHeading.textContent = '잠시 숨을 고르세요';
+    ui.pauseSoundSettings.classList.remove('hidden');
     ui.resume.classList.remove('hidden');
   }
 
@@ -4159,6 +4231,7 @@ class GameScene extends Phaser.Scene {
     audio.stopBgm();
     ui.pauseKicker.textContent = 'GAME OVER';
     ui.pauseHeading.textContent = `${this.chapterIndex + 1}번째 설화 · 총 ${Math.floor(this.totalElapsed)}초 동안 싸웠습니다`;
+    ui.pauseSoundSettings.classList.add('hidden');
     ui.resume.classList.add('hidden');
     ui.pause.classList.remove('hidden');
   }
@@ -4200,14 +4273,19 @@ startButton.dataset.readyLabel = defaultStartLabel;
 startButton.disabled = true;
 startButton.textContent = '게임 이미지 불러오는 중...';
 
-decodeEmbeddedSprites()
-  .then(decodedSprites => {
+Promise.all([
+  decodeEmbeddedSprites().catch(error => {
+    console.error(error);
+    return {};
+  }),
+  decodeChapterBackgrounds()
+])
+  .then(([decodedSprites, decodedBackgrounds]) => {
     window.DECODED_SPRITES = decodedSprites;
+    window.DECODED_BACKGROUNDS = decodedBackgrounds;
+    window.game = new Phaser.Game(config);
   })
   .catch(error => {
     console.error(error);
-    window.DECODED_SPRITES = {};
-  })
-  .finally(() => {
-    window.game = new Phaser.Game(config);
+    updateMapLoadingScreen(0, '맵 이미지를 불러오지 못했습니다. 새로고침해 주세요.', true);
   });
