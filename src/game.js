@@ -1,9 +1,9 @@
 const WIDTH = 960;
 const HEIGHT = 640;
-const WORLD_WIDTH = 1536;
-const WORLD_HEIGHT = 1024;
+const WORLD_WIDTH = 1920;
+const WORLD_HEIGHT = 1280;
 const RENDER_RESOLUTION = 2;
-const SPRITE_VERSION = '20260808-9';
+const SPRITE_VERSION = '20260808-10';
 const CAMERA_ZOOM = .9;
 const PLAYER_DISPLAY_SIZE = (132 * .9 * .9 * .95) / CAMERA_ZOOM;
 const ENEMY_VISUAL_SCALE = 1.2 / CAMERA_ZOOM;
@@ -2252,8 +2252,6 @@ class GameScene extends Phaser.Scene {
       enemy.setAngle(Math.sin(this.time.now * .012 + enemy.x * .03) * (enemy.kind === 'ranged' ? 2 : 3.5));
     });
 
-    this.separateBossesFromOtherEnemies();
-
     this.orbs.getChildren().forEach(orb => {
       if (!orb.active) return;
       const distance = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
@@ -2411,61 +2409,7 @@ class GameScene extends Phaser.Scene {
     const baseTint = elite ? 0xf0a33a : chapterTints[this.chapterIndex];
     enemy.setData('baseTint', baseTint);
     enemy.setTint(baseTint);
-    this.separateBossesFromOtherEnemies();
     return enemy;
-  }
-
-  separateEnemyFromBoss(enemy, boss) {
-    if (!enemy?.active || !boss?.active || enemy === boss) return false;
-    // 회전된 정사각형 이미지의 대각선까지 포함해 시각적으로 겹치지 않게 한다.
-    const enemyRadius = Math.max(enemy.displayWidth, enemy.displayHeight) * .71;
-    const bossRadius = Math.max(boss.displayWidth, boss.displayHeight) * .71;
-    const minimumDistance = enemyRadius + bossRadius + 18;
-    const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, boss.x, boss.y);
-    if (distance >= minimumDistance) return false;
-
-    const baseAngle = distance > .01
-      ? Phaser.Math.Angle.Between(boss.x, boss.y, enemy.x, enemy.y)
-      : Phaser.Math.Angle.Between(boss.x, boss.y, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
-    const margin = Math.max(34, enemyRadius * .72);
-    const candidates = [baseAngle, baseAngle + Math.PI, baseAngle + Math.PI / 2, baseAngle - Math.PI / 2];
-    let best = null;
-    candidates.forEach(angle => {
-      const x = Phaser.Math.Clamp(boss.x + Math.cos(angle) * minimumDistance, margin, WORLD_WIDTH - margin);
-      const y = Phaser.Math.Clamp(boss.y + Math.sin(angle) * minimumDistance, margin, WORLD_HEIGHT - margin);
-      const clearance = Phaser.Math.Distance.Between(x, y, boss.x, boss.y);
-      if (!best || clearance > best.clearance) best = { x, y, clearance };
-    });
-    if (!best) return false;
-
-    enemy.setPosition(best.x, best.y);
-    const awayX = best.x - boss.x;
-    const awayY = best.y - boss.y;
-    const awayLength = Math.max(.001, Math.hypot(awayX, awayY));
-    const normalX = awayX / awayLength;
-    const normalY = awayY / awayLength;
-    const inwardVelocity = enemy.body.velocity.x * normalX + enemy.body.velocity.y * normalY;
-    if (inwardVelocity < 0) {
-      enemy.body.velocity.x -= inwardVelocity * normalX;
-      enemy.body.velocity.y -= inwardVelocity * normalY;
-    }
-    const shadow = enemy.getData('shadow');
-    if (shadow?.active) shadow.setPosition(enemy.x, enemy.y + enemy.displayHeight * .34);
-    return true;
-  }
-
-  separateBossesFromOtherEnemies() {
-    if (!this.enemies) return;
-    const activeEnemies = this.enemies.getChildren().filter(enemy => enemy.active);
-    const bosses = activeEnemies
-      .filter(enemy => enemy.kind === 'boss' || enemy.isMidBoss)
-      .sort((left, right) => Number(right.kind === 'boss') - Number(left.kind === 'boss'));
-    bosses.forEach(boss => {
-      activeEnemies.forEach(enemy => {
-        if (enemy === boss || enemy.kind === 'boss') return;
-        this.separateEnemyFromBoss(enemy, boss);
-      });
-    });
   }
 
   spawnMidBoss(order) {
@@ -2488,7 +2432,6 @@ class GameScene extends Phaser.Scene {
     enemy.setTint(0xffb44f);
     const shadow = enemy.getData('shadow');
     if (shadow?.active) shadow.setScale(1.35, 1.35).setAlpha(.56);
-    this.separateBossesFromOtherEnemies();
     this.createDevicePulse(enemy.x, enemy.y, chapter.accent, 92);
     this.cameras.main.shake(260, .005);
   }
@@ -2587,7 +2530,6 @@ class GameScene extends Phaser.Scene {
     boss.setData('lastLegacyPattern', null);
     boss.setData('nextSummonAt', this.chapterIndex === CAMPAIGN.length - 1 ? this.time.now + 7200 : Infinity);
     this.activeBoss = boss;
-    this.separateBossesFromOtherEnemies();
     ui.bossName.textContent = `${chapter.bossName} · ${this.chapterIndex + 1}번째 설화`;
     ui.bossFill.style.width = '100%';
     ui.bossPanel.classList.remove('hidden');
