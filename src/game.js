@@ -2,7 +2,8 @@ const WIDTH = 960;
 const HEIGHT = 640;
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1800;
-const SPRITE_VERSION = '20260808-1';
+const RENDER_RESOLUTION = 2;
+const SPRITE_VERSION = '20260808-2';
 const SUNSET_START = 34;
 const NIGHT_START = 55;
 const MID_BOSS_TIMES = [18, 38];
@@ -994,12 +995,19 @@ class GameScene extends Phaser.Scene {
     if (this.missingSpriteKeys.length) {
       console.error('Required embedded sprites failed to load:', this.missingSpriteKeys.join(', '));
     }
+    const highResolutionTextureKeys = [
+      ...Object.keys(EMBEDDED_TEXTURE_FILES),
+      ...CHAPTER_BACKGROUND_FILES.map((fileName, index) => chapterBackgroundKey(index))
+    ];
+    highResolutionTextureKeys.forEach(key => {
+      if (this.textures.exists(key)) this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    });
   }
 
   createWorld() {
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    this.cameras.main.roundPixels = true;
+    this.cameras.main.roundPixels = false;
 
     this.groundBase = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x263b2e)
       .setOrigin(0)
@@ -4083,10 +4091,20 @@ const config = {
   type: Phaser.AUTO,
   width: WIDTH,
   height: HEIGHT,
+  resolution: RENDER_RESOLUTION,
   parent: 'game-container',
   backgroundColor: '#070914',
-  pixelArt: true,
-  roundPixels: true,
+  antialias: true,
+  antialiasGL: true,
+  pixelArt: false,
+  roundPixels: false,
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    pixelArt: false,
+    roundPixels: false,
+    powerPreference: 'high-performance'
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
